@@ -22,15 +22,18 @@ class Game:
     def generate_map(self):
         for i in range(self.map_size[1]):
             for j in range(self.map_size[0]):
-                self.map[i].append(Tile((j*60, i*60), random.choice(Biomes), "src/test_unit.png", random.choice(resource_types), False))
+                # Проработать алгоритм для нормальной генерации биомов. После выполнения алгоритма, записать итоговый биом для данной клетки
+                # в переменную biome
+                biome = random.choice(Biomes) # ВРЕМЕННО
+                self.map[i].append(Tile((j*60, i*60), biome, biome.image_path, random.choice(resource_types), False))
 
 
 class Biome:
-    def __init__(self, name, walk_difficulty, harshness, t_color):
+    def __init__(self, name, walk_difficulty, harshness, image_path):
         self.name = name
         self.walk_difficulty = walk_difficulty
         self.harshness = harshness
-        self.t_color = t_color
+        self.image_path = image_path
 
 
 class Tile(pygame.sprite.Sprite):
@@ -55,7 +58,7 @@ class Unit(pygame.sprite.Sprite):
         self.name = name
         self.team = team
         image = pygame.image.load(image_path).convert_alpha()
-        image = pygame.transform.scale(image, (180, 180))
+        image = pygame.transform.scale(image, (150, 150))
         self.image_original = image.subsurface(image.get_bounding_rect())
         self.image = self.image_original.copy()
         self.rect = self.image.get_rect(topleft=pos)
@@ -105,11 +108,11 @@ clock = pygame.time.Clock()
 
 resource_types = ("Strategic", "Valuable", "Bonus")
 teams = ("Rome", "France", "Russia", "England", "Egypt")
-Biomes = (Biome("Tundra", 3, 4, (255, 0, 0)), Biome("Desert", 2, 4, (255, 255, 0)),
-          Biome("Swamp", 4, 5, (255, 255, 255)), Biome("Mountains", 3, 3, (0, 255, 0)),
-          Biome("Plains", 1, 1, (0, 255, 255)), Biome("RollingPlains", 2, 1, (0, 0, 255)),
-          Biome("Jungle", 3, 2, (125, 125, 125)), Biome("Woods", 1, 1, (255, 100, 1)),
-          Biome("Sea", 5, 5, (255, 0, 125)))
+Biomes = (Biome("Tundra", 3, 4, "src/tundra.png"), Biome("Desert", 2, 4, "src/desert.png"),
+          Biome("Swamp", 4, 5, "src/jungle.png"), Biome("Mountains", 3, 3, "src/mountains.png"),
+          Biome("Plains", 1, 1, "src/plains.png"), Biome("RollingPlains", 2, 1, "src/hills.png"),
+          Biome("Jungle", 3, 2,"src/jungle.png"), Biome("Woods", 1, 1, "src/woods.png"),
+          Biome("Sea", 5, 5, "src/sea.png"))
 
 game = Game(1, teams, teams[2], (10, 10), screen)
 game.start_game()
@@ -125,9 +128,9 @@ while True:
             pygame.quit()
 
     units.update(events, game)
-    units.draw(screen)
     tiles.draw(screen)
     if selected_unit is not None:
         tiles.update()
+    units.draw(screen)
     pygame.display.flip()
     clock.tick(fps)
