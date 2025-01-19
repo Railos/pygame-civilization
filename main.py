@@ -20,14 +20,71 @@ class Game:
         # self.player_team = random.choice(self.teams)
 
     def generate_map(self):
+        mountain = random.randint(2, 3)
+        tundra = random.randint(2, 2)
+        rand_desert = "random.randint(5, 10)"
+        desert = eval(rand_desert)
+        n_desert = random.randint(1, 3)
+        ms_plants = []
+        ms_desert = []
+        ms_mountain = []
+        banned_biomes = [Biomes[0], Biomes[3], Biomes[8], Biomes[1]]
+        sea = random.randint(2, 2)
         for i in range(self.map_size[1]):
             for j in range(self.map_size[0]):
                 # Проработать алгоритм для нормальной генерации биомов. После выполнения алгоритма, записать итоговый биом для данной клетки
                 # в переменную biome
+                biome = random.choice(Biomes)  # ВРЕМЕННО
+                if (i < tundra or i > self.map_size[0] - tundra) and not (
+                        j < sea or j > self.map_size[0] - sea):
+                    biome = Biomes[0]
+                elif j < sea or j > self.map_size[1] - sea:
+                    biome = Biomes[8]
+                else:
+                    biome = Biomes[4]
+                    ms_plants.append((j, i))
+                    ms_desert.append((j, i))
 
-                biome = random.choice(Biomes) # ВРЕМЕННО
-                self.map[i].append(Tile((j * 60, i * 60), biome, biome.image_path, random.choice(resource_types), False)) # не трогать
+                self.map[i].append(
+                    Tile((j * 60, i * 60), biome, biome.image_path, random.choice(resource_types), False))
 
+        for _ in range(mountain):
+            m = random.choice(ms_plants)
+            ms_mountain.append(m)
+            biome = Biomes[3]
+            self.map[m[1]][m[0]] = Tile((m[0] * 60, m[1] * 60), biome, biome.image_path, random.choice(resource_types),
+                                        False)
+
+        for qq in range(n_desert):
+            desert = eval(rand_desert)
+            m = random.choice(ms_desert)
+            biome = Biomes[1]
+            self.map[m[1]][m[0]] = Tile((m[0] * 60, m[1] * 60), biome, biome.image_path, random.choice(resource_types),
+                                        False)
+
+            print(m[0], m[1])
+
+            while desert != 1:
+                r = random.randint(1, 4)
+                if r == 1:
+                    if self.map[m[1]-1][m[0]].biome not in banned_biomes:
+                        m = (m[0], m[1] - 1)
+                        desert -= 1
+                elif r == 2:
+                    if self.map[m[1]][m[0]+1].biome not in banned_biomes:
+                        m = (m[0] + 1, m[1])
+                        desert -= 1
+                elif r == 3:
+                    if self.map[m[1]+1][m[0]].biome not in banned_biomes:
+                        m = (m[0], m[1] + 1)
+                        desert -= 1
+                elif r == 4:
+                    if self.map[m[1]][m[0]-1].biome not in banned_biomes:
+                        m = (m[0] - 1, m[1])
+                        desert -= 1
+                biome = Biomes[1]
+                self.map[m[1]][m[0]] = Tile((m[0] * 60, m[1] * 60), biome, biome.image_path, random.choice(resource_types),
+                                            False)
 
 class Biome:
     def __init__(self, name, walk_difficulty, harshness, image_path):
@@ -132,7 +189,7 @@ Biomes = (Biome("Tundra", 3, 4, "src/biomes/tundra.png"), Biome("Desert", 2, 4, 
           Biome("Jungle", 3, 2, "src/biomes/jungle.png"), Biome("Woods", 2, 1, "src/biomes/woods.png"),
           Biome("Sea", 5, 5, "src/biomes/sea.png"))
 
-game = Game(1, teams, teams[2], (10, 10), screen)
+game = Game(1, teams, teams[2], (15, 15), screen)
 game.start_game()
 test_unit = Unit("testPidor", teams[2], "src/units/spearman.png",  (100, 0))
 units = pygame.sprite.Group(test_unit)
