@@ -85,7 +85,7 @@ class Game:
             while queue and created_tiles < chunk_size:
                 x, y = queue.pop(0)
                 if is_valid_pos(x, y) and self.map[y][x] is None:
-                    self.map[y][x] = Tile((x*60, y*60), biome, biome.image_path, None, False)
+                    self.map[y][x] = Tile((x * 60, y * 60), biome, biome.image_path, None, False)
                     created_tiles += 1
 
                     # Добавляем соседей в очередь (случайный порядок для более естественной формы)
@@ -95,10 +95,13 @@ class Game:
 
         # Шаг 1: Генерация крупных биомов
         biome_distribution = {
-            Biomes[4]: (10, 20),
+            Biomes[4]: (10, 15),
             Biomes[7]: (8, 15),
             Biomes[1]: (5, 10),
-            Biomes[8]: (10, 15)
+            Biomes[8]: (10, 15),
+            Biomes[6]: (5, 10),
+            Biomes[3]: (4, 6),
+            Biomes[5]: (3, 6)
         }
 
         tundra_up = random.randint(2, 3)
@@ -108,14 +111,15 @@ class Game:
 
         for i in range(self.map_size[1]):
             for j in range(self.map_size[0]):
-                if (i < tundra_down or i > self.map_size[0] - tundra_up-1) and not (
-                        j < sea_left or j > self.map_size[0] - sea_right-1):
+                if (i < tundra_down or i > self.map_size[0] - tundra_up - 1) and not (
+                        j < sea_left or j > self.map_size[0] - sea_right - 1):
                     biome = Biomes[0]
                     self.map[i][j] = Tile((j * 60, i * 60), biome, biome.image_path, random.choice(resource_types),
                                           False)
-                elif j < sea_left or j > self.map_size[1] - sea_right-1:
+                elif j < sea_left or j > self.map_size[1] - sea_right - 1:
                     biome = Biomes[8]
-                    self.map[i][j] = Tile((j * 60, i * 60), biome, biome.image_path, random.choice(resource_types), False)
+                    self.map[i][j] = Tile((j * 60, i * 60), biome, biome.image_path, random.choice(resource_types),
+                                          False)
 
         for biome, size_range in biome_distribution.items():
             for _ in range(random.randint(3, 6)):  # Несколько областей каждого биома
@@ -127,16 +131,21 @@ class Game:
         for y in range(self.map_size[1]):
             for x in range(self.map_size[0]):
                 if self.map[y][x] is None:
+                    # Добавляем случайный биом
                     zvg = random.choice([Biomes[4], Biomes[7]])
-                    self.map[y][x] = Tile((x*60, y*60), zvg, zvg.image_path, None, False)
-                elif self.map[y][x].biome == Biomes[4] and random.random() < 0.05:
-                    # Генерация гор
-                    self.map[y][x] = Tile((x*60, y*60), Biomes[3], Biomes[3].image_path, None, False)
-                    generate_biome_chunk((x, y), Biomes[5], (10, 20))  # Hills вокруг Mountains
+                    self.map[y][x] = Tile((x * 60, y * 60), zvg, zvg.image_path, None, False)
 
-                elif self.map[y][x].biome == Biomes[8]:
-                    # Генерация болот
-                    generate_biome_chunk((x, y), Biomes[2], (3, 6))
+                # Генерация гор (mountains) с шансом
+                elif self.map[y][x].biome == Biomes[4] and random.random() < 0.05:
+                    self.map[y][x] = Tile((x * 60, y * 60), Biomes[3], Biomes[3].image_path, None, False)
+
+                elif self.map[y][x].biome == Biomes[4] and random.random() < 0.5:
+                    self.map[y][x] = Tile((x * 60, y * 60), Biomes[5], Biomes[5].image_path, None, False)
+                    generate_biome_chunk((x, y), Biomes[5], (3, 6))
+
+                # Генерация болот (swamp) вокруг биома "Sea"
+                elif self.map[y][x].biome == Biomes[8] and random.random() < 0.1:
+                    generate_biome_chunk((x, y), Biomes[2], (3, 6))  # Генерация болот вокруг моря
 
 
 class Biome:
@@ -236,6 +245,20 @@ class Camera:
     def reset_offset(self):
         self.offset_x = 0
         self.offset_y = 0
+
+
+class City(pygame.sprite.Sprite):
+    def __init__(self, image_path, pos, name, team, population, religion):
+        super().__init__()
+        self.name = name
+        self.team = team
+        self.population = population
+        self.religion = religion
+        image = pygame.image.load(image_path).convert_alpha()
+        image = pygame.transform.scale(image, (150, 150))
+        self.image_original = image.subsurface(image.get_bounding_rect())
+        self.image = self.image_original.copy()
+        self.rect = self.image.get_rect(topleft=pos)
 
 
 pygame.init()
