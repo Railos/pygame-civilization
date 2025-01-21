@@ -19,9 +19,9 @@ def find_shortest_path(grid, start, goal):
     # Проверка на границы
     rows, cols = len(grid), len(grid[0])
     if not (0 <= start[0] < cols and 0 <= start[1] < rows):
-        return None
+        return 999
     if not (0 <= goal[0] < cols and 0 <= goal[1] < rows):
-        return None
+        return 999
 
     # Направления для перемещения (вверх, вправо, вниз, влево)
     directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]
@@ -30,13 +30,16 @@ def find_shortest_path(grid, start, goal):
     queue = deque([(start, [start])])  # Кортеж: текущая клетка, путь до неё
     visited = set()
     visited.add(start)
+    length = 0
 
     while queue:
         current, path = queue.popleft()
 
         # Если дошли до цели, возвращаем путь
         if current == goal:
-            return path
+            for i in path[1:len(path)]:
+                length += game.map[i[1]][i[0]].biome.walk_difficulty
+            return length
 
         # Проверяем соседей
         for direction in directions:
@@ -46,9 +49,8 @@ def find_shortest_path(grid, start, goal):
                     and neighbor not in visited):  # Клетка не посещена
                 visited.add(neighbor)
                 queue.append((neighbor, path + [neighbor]))
-
     # Если путь не найден
-    return None
+    return 999
 
 
 class Game:
@@ -160,14 +162,20 @@ class Tile(pygame.sprite.Sprite):
     def update(self, event, game):
         global selected_unit
         if self.rect.collidepoint(event.pos):
-            selected_unit.rect.center = self.rect.center
-            print(find_shortest_path(game.map, selected_unit.pos, (self.pos[0] / 60, self.pos[1] / 60)))
-            selected_unit.pos = (int(self.pos[0] / 60), int(self.pos[1] / 60))
-            selected_unit.deselect()
+            pathuwu = find_shortest_path(game.map, selected_unit.pos, (self.pos[0] / 60, self.pos[1] / 60))
+            print(pathuwu, selected_unit.walk_points)
+            if pathuwu <= selected_unit.walk_points:
+                selected_unit.rect.center = self.rect.center
+                selected_unit.pos = (int(self.pos[0] / 60), int(self.pos[1] / 60))
+                selected_unit.deselect()
+            else:
+                print("too far")
+                selected_unit.deselect()
+                selected_unit = None
 
 
 class Unit(pygame.sprite.Sprite):
-    def __init__(self, name, team, image_path, pos):
+    def __init__(self, name, team, image_path, pos, walk_points):
         super().__init__()
         self.name = name
         self.team = team
@@ -177,6 +185,7 @@ class Unit(pygame.sprite.Sprite):
         self.image = self.image_original.copy()
         self.rect = self.image.get_rect(topleft=pos)
         self.pos = pos
+        self.walk_points = walk_points
 
     def update(self, event, game: Game):
         global selected_unit
@@ -237,22 +246,21 @@ clock = pygame.time.Clock()
 
 resource_types = ("Strategic", "Valuable", "Bonus")
 teams = ("Rome", "France", "Russia", "England", "Egypt")
-Biomes = (Biome("Tundra", 3, 4, "src/biomes/tundra.png"), Biome("Desert", 2, 4, "src/biomes/desert.png"),
-          Biome("Swamp", 4, 5, "src/biomes/swamp.png"), Biome("Mountains", 3, 3, "src/biomes/mountains.png"),
+Biomes = (Biome("Tundra", 2, 4, "src/biomes/tundra.png"), Biome("Desert", 2, 4, "src/biomes/desert.png"),
+          Biome("Swamp", 3, 5, "src/biomes/swamp.png"), Biome("Mountains", 3, 3, "src/biomes/mountains.png"),
           Biome("Plains", 1, 1, "src/biomes/plains.png"), Biome("RollingPlains", 2, 1, "src/biomes/hills.png"),
-          Biome("Jungle", 3, 2, "src/biomes/jungle.png"), Biome("Woods", 2, 1, "src/biomes/woods.png"),
-          Biome("Sea", 5, 5, "src/biomes/sea.png"))
-Units = (Unit("", None, "src/units/archer.png", (0, 0)), Unit("", None, "src/units/catapult.png", (0, 0)),
-         Unit("", None, "src/units/chariot.png", (0, 0)), Unit("", None, "src/units/galley.png", (0, 0)),
-         Unit("", None, "src/units/galley.png", (0, 0)), Unit("", None, "src/units/horseman.png", (0, 0)),
-         Unit("", None, "src/units/scout.png", (0, 0)), Unit("", None, "src/units/settler.png", (0, 0)),
-         Unit("", None, "src/units/spearman.png", (0, 0)), Unit("", None, "src/units/swordsman.png", (0, 0)),
-         Unit("", None, "src/units/trireme.png", (0, 0)), Unit("", None, "src/units/warrior.png", (0, 0)),
-         Unit("", None, "src/units/worker.png", (0, 0)))
+          Biome("Jungle", 3, 2, "src/biomes/jungle.png"), Biome("Woods", 1, 1, "src/biomes/woods.png"),
+          Biome("Sea", 3, 5, "src/biomes/sea.png"))
+Units = (Unit("", None, "src/units/archer.png", (0, 0), 4), Unit("", None, "src/units/catapult.png", (0, 0), 3),
+         Unit("", None, "src/units/chariot.png", (0, 0), 3), Unit("", None, "src/units/galley.png", (0, 0), 9),
+         Unit("", None, "src/units/horseman.png", (0, 0), 9), Unit("", None, "src/units/scout.png", (0, 0), 6),
+         Unit("", None, "src/units/settler.png", (0, 0), 3), Unit("", None, "src/units/spearman.png", (0, 0), 5),
+         Unit("", None, "src/units/swordsman.png", (0, 0), 4), Unit("", None, "src/units/trireme.png", (0, 0), 6),
+         Unit("", None, "src/units/warrior.png", (0, 0), 5), Unit("", None, "src/units/worker.png", (0, 0), 4))
 
 game = Game(1, teams, teams[2], (25, 25), screen)
 game.start_game()
-spearman = Units[8]
+spearman = Units[7]
 spearman.name = "test_pidorasik"
 spearman.team = teams[2]
 spearman.pos = (2, 0)
