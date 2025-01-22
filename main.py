@@ -85,7 +85,7 @@ class Game:
             while queue and created_tiles < chunk_size:
                 x, y = queue.pop(0)
                 if is_valid_pos(x, y) and self.map[y][x] is None:
-                    self.map[y][x] = Tile((x * 90, y * 90), biome, biome.image_path, None, False)
+                    self.map[y][x] = Tile((x * tile_size, y * tile_size), biome, biome.image_path, None, False)
                     created_tiles += 1
 
                     # Добавляем соседей в очередь (случайный порядок для более естественной формы)
@@ -114,11 +114,11 @@ class Game:
                 if (i < tundra_down or i > self.map_size[0] - tundra_up - 1) and not (
                         j < sea_left or j > self.map_size[0] - sea_right - 1):
                     biome = Biomes[0]
-                    self.map[i][j] = Tile((j * 90, i * 90), biome, biome.image_path, random.choice(resource_types),
+                    self.map[i][j] = Tile((j * tile_size, i * tile_size), biome, biome.image_path, random.choice(resource_types),
                                           False)
                 elif j < sea_left or j > self.map_size[1] - sea_right - 1:
                     biome = Biomes[8]
-                    self.map[i][j] = Tile((j * 90, i * 90), biome, biome.image_path, random.choice(resource_types),
+                    self.map[i][j] = Tile((j * tile_size, i * tile_size), biome, biome.image_path, random.choice(resource_types),
                                           False)
 
         for biome, size_range in biome_distribution.items():
@@ -133,14 +133,14 @@ class Game:
                 if self.map[y][x] is None:
                     # Добавляем случайный биом
                     zvg = random.choice([Biomes[4], Biomes[7]])
-                    self.map[y][x] = Tile((x * 90, y * 90), zvg, zvg.image_path, None, False)
+                    self.map[y][x] = Tile((x * tile_size, y * tile_size), zvg, zvg.image_path, None, False)
 
                 # Генерация гор (mountains) с шансом
                 elif self.map[y][x].biome == Biomes[4] and random.random() < 0.05:
-                    self.map[y][x] = Tile((x * 90, y * 90), Biomes[3], Biomes[3].image_path, None, False)
+                    self.map[y][x] = Tile((x * tile_size, y * tile_size), Biomes[3], Biomes[3].image_path, None, False)
 
                 elif self.map[y][x].biome == Biomes[4] and random.random() < 0.5:
-                    self.map[y][x] = Tile((x * 90, y * 90), Biomes[5], Biomes[5].image_path, None, False)
+                    self.map[y][x] = Tile((x * tile_size, y * tile_size), Biomes[5], Biomes[5].image_path, None, False)
                     generate_biome_chunk((x, y), Biomes[5], (3, 6))
 
                 # Генерация болот (swamp) вокруг биома "Sea"
@@ -178,11 +178,11 @@ class Tile(pygame.sprite.Sprite):
     def update(self, event, game):
         global selected_unit
         if self.rect.collidepoint(event.pos):
-            pathuwu = find_shortest_path(game.map, selected_unit.pos, (self.pos[0] / 90, self.pos[1] / 90))
+            pathuwu = find_shortest_path(game.map, selected_unit.pos, (self.pos[0] / tile_size, self.pos[1] / tile_size))
             print(pathuwu, selected_unit.walk_points)
             if pathuwu <= selected_unit.walk_points:
                 selected_unit.rect.center = self.rect.center
-                selected_unit.pos = (int(self.pos[0] / 90), int(self.pos[1] / 90))
+                selected_unit.pos = (int(self.pos[0] / tile_size), int(self.pos[1] / tile_size))
                 selected_unit.deselect()
             else:
                 print("too far")
@@ -264,7 +264,7 @@ class City(pygame.sprite.Sprite):
         self.population = population
         self.religion = religion
         image = pygame.image.load(image_path).convert_alpha()
-        image = pygame.transform.scale(image, (90, 90))
+        image = pygame.transform.scale(image, (tile_size, tile_size))
         self.image_original = image.subsurface(image.get_bounding_rect())
         self.image = self.image_original.copy()
         self.rect = self.image.get_rect(topleft=pos)
@@ -307,6 +307,7 @@ Biomes = (Biome("Tundra", 2, 4, "src/biomes/tundra.png"), Biome("Desert", 2, 4, 
           Biome("Sea", 3, 5, "src/biomes/sea.png"))
 
 game = Game(1, teams, teams[2], (30, 30), screen)
+tile_size = 90
 game.start_game()
 settlertest = Settler("settler1", (2, 0), teams[2], 5)
 units_to_draw = [settlertest]
@@ -343,6 +344,7 @@ while True:
 
     camera.update(units)
     camera.update(tiles)
+    camera.update(cities)
     tiles.draw(screen)
     units.draw(screen)
     cities.draw(screen)
