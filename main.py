@@ -85,7 +85,7 @@ class Game:
             while queue and created_tiles < chunk_size:
                 x, y = queue.pop(0)
                 if is_valid_pos(x, y) and self.map[y][x] is None:
-                    self.map[y][x] = Tile((x * 60, y * 60), biome, biome.image_path, None, False)
+                    self.map[y][x] = Tile((x * 90, y * 90), biome, biome.image_path, None, False)
                     created_tiles += 1
 
                     # Добавляем соседей в очередь (случайный порядок для более естественной формы)
@@ -114,11 +114,11 @@ class Game:
                 if (i < tundra_down or i > self.map_size[0] - tundra_up - 1) and not (
                         j < sea_left or j > self.map_size[0] - sea_right - 1):
                     biome = Biomes[0]
-                    self.map[i][j] = Tile((j * 60, i * 60), biome, biome.image_path, random.choice(resource_types),
+                    self.map[i][j] = Tile((j * 90, i * 90), biome, biome.image_path, random.choice(resource_types),
                                           False)
                 elif j < sea_left or j > self.map_size[1] - sea_right - 1:
                     biome = Biomes[8]
-                    self.map[i][j] = Tile((j * 60, i * 60), biome, biome.image_path, random.choice(resource_types),
+                    self.map[i][j] = Tile((j * 90, i * 90), biome, biome.image_path, random.choice(resource_types),
                                           False)
 
         for biome, size_range in biome_distribution.items():
@@ -133,19 +133,26 @@ class Game:
                 if self.map[y][x] is None:
                     # Добавляем случайный биом
                     zvg = random.choice([Biomes[4], Biomes[7]])
-                    self.map[y][x] = Tile((x * 60, y * 60), zvg, zvg.image_path, None, False)
+                    self.map[y][x] = Tile((x * 90, y * 90), zvg, zvg.image_path, None, False)
 
                 # Генерация гор (mountains) с шансом
                 elif self.map[y][x].biome == Biomes[4] and random.random() < 0.05:
-                    self.map[y][x] = Tile((x * 60, y * 60), Biomes[3], Biomes[3].image_path, None, False)
+                    self.map[y][x] = Tile((x * 90, y * 90), Biomes[3], Biomes[3].image_path, None, False)
 
                 elif self.map[y][x].biome == Biomes[4] and random.random() < 0.5:
-                    self.map[y][x] = Tile((x * 60, y * 60), Biomes[5], Biomes[5].image_path, None, False)
+                    self.map[y][x] = Tile((x * 90, y * 90), Biomes[5], Biomes[5].image_path, None, False)
                     generate_biome_chunk((x, y), Biomes[5], (3, 6))
 
                 # Генерация болот (swamp) вокруг биома "Sea"
                 elif self.map[y][x].biome == Biomes[8] and random.random() < 0.1:
                     generate_biome_chunk((x, y), Biomes[2], (3, 6))  # Генерация болот вокруг моря
+
+
+class Team:
+    def __init__(self, name, cities, city_image_path):
+        self.name = name
+        self.cities = []
+        self.city_image_path = city_image_path
 
 
 class Biome:
@@ -162,7 +169,7 @@ class Tile(pygame.sprite.Sprite):
         self.pos = pos
         self.biome = biome
         image_or = pygame.image.load(image_path).convert_alpha()
-        image_or = pygame.transform.scale(image_or, (120, 120))
+        image_or = pygame.transform.scale(image_or, (180, 180))
         self.image = image_or.subsurface(image_or.get_bounding_rect())
         self.resource = resource
         self.occupied = occupied
@@ -171,11 +178,11 @@ class Tile(pygame.sprite.Sprite):
     def update(self, event, game):
         global selected_unit
         if self.rect.collidepoint(event.pos):
-            pathuwu = find_shortest_path(game.map, selected_unit.pos, (self.pos[0] / 60, self.pos[1] / 60))
+            pathuwu = find_shortest_path(game.map, selected_unit.pos, (self.pos[0] / 90, self.pos[1] / 90))
             print(pathuwu, selected_unit.walk_points)
             if pathuwu <= selected_unit.walk_points:
                 selected_unit.rect.center = self.rect.center
-                selected_unit.pos = (int(self.pos[0] / 60), int(self.pos[1] / 60))
+                selected_unit.pos = (int(self.pos[0] / 90), int(self.pos[1] / 90))
                 selected_unit.deselect()
             else:
                 print("too far")
@@ -184,7 +191,7 @@ class Tile(pygame.sprite.Sprite):
 
 
 class Unit(pygame.sprite.Sprite):
-    def __init__(self, name, team, image_path, pos, walk_points):
+    def __init__(self, image_path, name, team, pos, walk_points):
         super().__init__()
         self.name = name
         self.team = team
@@ -194,18 +201,20 @@ class Unit(pygame.sprite.Sprite):
         self.image = self.image_original.copy()
         self.rect = self.image.get_rect(topleft=pos)
         self.pos = pos
+        self.rect.center = game.map[self.pos[1]][self.pos[0]].rect.center
         self.walk_points = walk_points
 
     def update(self, event, game: Game):
-        global selected_unit
-        if self.rect.collidepoint(event.pos):
-            if self.team == game.player_team:
-                if selected_unit == self:
-                    selected_unit = None
-                    self.deselect()
-                else:
-                    selected_unit = self
-                    self.select()
+        if type(event) == pygame.event.Event and event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+            global selected_unit
+            if self.rect.collidepoint(event.pos):
+                if self.team == game.player_team:
+                    if selected_unit == self:
+                        selected_unit = None
+                        self.deselect()
+                    else:
+                        selected_unit = self
+                        self.select()
 
     def select(self):
         self.image = self.image_original.copy()
@@ -255,10 +264,32 @@ class City(pygame.sprite.Sprite):
         self.population = population
         self.religion = religion
         image = pygame.image.load(image_path).convert_alpha()
-        image = pygame.transform.scale(image, (150, 150))
+        image = pygame.transform.scale(image, (90, 90))
         self.image_original = image.subsurface(image.get_bounding_rect())
         self.image = self.image_original.copy()
         self.rect = self.image.get_rect(topleft=pos)
+        self.rect.center = game.map[pos[1]][pos[0]].rect.center
+        self.pos = pos
+
+
+class Settler(Unit):
+    def __init__(self, name, pos, team, walk_points):
+        super().__init__(image_path="src/units/settler.png", name=name, pos=pos, team=team, walk_points=walk_points)
+
+    def update(self, event, game):
+        super().update(event, game)
+        global selected_unit
+        if type(event) == str and event == "space" and selected_unit == self:
+            new_city = City(self.team.city_image_path, self.pos, f'{random.randint(1, 10)}_{random.randint(1, 10)}', self.team, 1, None)
+            self.team.cities.append(new_city)
+            print(self.team.cities)
+            global units, units_to_draw
+            global cities_to_draw, cities
+            units_to_draw.remove(self)
+            units = pygame.sprite.Group(units_to_draw)
+            cities_to_draw.append(new_city)
+            cities = pygame.sprite.Group(cities_to_draw)
+            selected_unit = None
 
 
 pygame.init()
@@ -268,28 +299,21 @@ fps = 60
 clock = pygame.time.Clock()
 
 resource_types = ("Strategic", "Valuable", "Bonus")
-teams = ("Rome", "France", "Russia", "England", "Egypt")
+teams = (Team("Rome", [], "src/units/trireme.png"), Team("Egypt", [], "src/units/trireme.png"), Team("Russia", [], "src/icons/russia.png"))
 Biomes = (Biome("Tundra", 2, 4, "src/biomes/tundra.png"), Biome("Desert", 2, 4, "src/biomes/desert.png"),
           Biome("Swamp", 3, 5, "src/biomes/swamp.png"), Biome("Mountains", 3, 3, "src/biomes/mountains.png"),
           Biome("Plains", 1, 1, "src/biomes/plains.png"), Biome("RollingPlains", 2, 1, "src/biomes/hills.png"),
           Biome("Jungle", 3, 2, "src/biomes/jungle.png"), Biome("Woods", 1, 1, "src/biomes/woods.png"),
           Biome("Sea", 3, 5, "src/biomes/sea.png"))
-Units = (Unit("", None, "src/units/archer.png", (0, 0), 4), Unit("", None, "src/units/catapult.png", (0, 0), 3),
-         Unit("", None, "src/units/chariot.png", (0, 0), 3), Unit("", None, "src/units/galley.png", (0, 0), 9),
-         Unit("", None, "src/units/horseman.png", (0, 0), 9), Unit("", None, "src/units/scout.png", (0, 0), 6),
-         Unit("", None, "src/units/settler.png", (0, 0), 3), Unit("", None, "src/units/spearman.png", (0, 0), 5),
-         Unit("", None, "src/units/swordsman.png", (0, 0), 4), Unit("", None, "src/units/trireme.png", (0, 0), 6),
-         Unit("", None, "src/units/warrior.png", (0, 0), 5), Unit("", None, "src/units/worker.png", (0, 0), 4))
 
-game = Game(1, teams, teams[2], (25, 25), screen)
+game = Game(1, teams, teams[2], (30, 30), screen)
 game.start_game()
-spearman = Units[7]
-spearman.name = "test_pidorasik"
-spearman.team = teams[2]
-spearman.pos = (2, 0)
-spearman.rect.topleft = (130, 0)
-units = pygame.sprite.Group(spearman)
+settlertest = Settler("settler1", (2, 0), teams[2], 5)
+units_to_draw = [settlertest]
+cities_to_draw = []
+units = pygame.sprite.Group(units_to_draw)
 tiles = pygame.sprite.Group(game.map)
+cities = pygame.sprite.Group(cities_to_draw)
 
 camera = Camera()
 # main loop
@@ -314,10 +338,14 @@ while True:
     if keys[pygame.K_d]:
         camera.move(-5, 0)
 
+    if keys[pygame.K_SPACE] and selected_unit is not None:
+        units.update("space", game)
+
     camera.update(units)
     camera.update(tiles)
     tiles.draw(screen)
     units.draw(screen)
+    cities.draw(screen)
     camera.reset_offset()
     pygame.display.flip()
     clock.tick(fps)
