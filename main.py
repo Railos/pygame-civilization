@@ -114,11 +114,13 @@ class Game:
                 if (i < tundra_down or i > self.map_size[0] - tundra_up - 1) and not (
                         j < sea_left or j > self.map_size[0] - sea_right - 1):
                     biome = Biomes[0]
-                    self.map[i][j] = Tile((j * tile_size, i * tile_size), biome, biome.image_path, random.choice(resource_types),
+                    self.map[i][j] = Tile((j * tile_size, i * tile_size), biome, biome.image_path,
+                                          random.choice(resource_types),
                                           False)
                 elif j < sea_left or j > self.map_size[1] - sea_right - 1:
                     biome = Biomes[8]
-                    self.map[i][j] = Tile((j * tile_size, i * tile_size), biome, biome.image_path, random.choice(resource_types),
+                    self.map[i][j] = Tile((j * tile_size, i * tile_size), biome, biome.image_path,
+                                          random.choice(resource_types),
                                           False)
 
         for biome, size_range in biome_distribution.items():
@@ -178,7 +180,8 @@ class Tile(pygame.sprite.Sprite):
     def update(self, event, game):
         global selected_unit
         if self.rect.collidepoint(event.pos):
-            pathuwu = find_shortest_path(game.map, selected_unit.pos, (self.pos[0] / tile_size, self.pos[1] / tile_size))
+            pathuwu = find_shortest_path(game.map, selected_unit.pos,
+                                         (self.pos[0] / tile_size, self.pos[1] / tile_size))
             print(pathuwu, selected_unit.walk_points)
             if pathuwu <= selected_unit.walk_points:
                 selected_unit.rect.center = self.rect.center
@@ -272,6 +275,36 @@ class City(pygame.sprite.Sprite):
         self.pos = pos
 
 
+class Archer(Unit):
+    def __init__(self, name, pos, team, walk_points):
+        super().__init__(image_path="src/units/archer.png", name=name, pos=pos, team=team, walk_points=walk_points)
+
+
+class Catapult(Unit):
+    def __init__(self, name, pos, team, walk_points):
+        super().__init__(image_path="src/units/catapult.png", name=name, pos=pos, team=team, walk_points=walk_points)
+
+
+class Chariot(Unit):
+    def __init__(self, name, pos, team, walk_points):
+        super().__init__(image_path="src/units/chariot.png", name=name, pos=pos, team=team, walk_points=walk_points)
+
+
+class Galley(Unit):
+    def __init__(self, name, pos, team, walk_points):
+        super().__init__(image_path="src/units/galley.png", name=name, pos=pos, team=team, walk_points=walk_points)
+
+
+class Horseman(Unit):
+    def __init__(self, name, pos, team, walk_points):
+        super().__init__(image_path="src/units/horseman.png", name=name, pos=pos, team=team, walk_points=walk_points)
+
+
+class Scout(Unit):
+    def __init__(self, name, pos, team, walk_points):
+        super().__init__(image_path="src/units/scout.png", name=name, pos=pos, team=team, walk_points=walk_points)
+
+
 class Settler(Unit):
     def __init__(self, name, pos, team, walk_points):
         super().__init__(image_path="src/units/settler.png", name=name, pos=pos, team=team, walk_points=walk_points)
@@ -279,8 +312,9 @@ class Settler(Unit):
     def update(self, event, game):
         super().update(event, game)
         global selected_unit
-        if type(event) == str and event == "space" and selected_unit == self:
-            new_city = City(self.team.city_image_path, self.pos, f'{random.randint(1, 10)}_{random.randint(1, 10)}', self.team, 1, None)
+        if type(event) == str and event == "settle" and selected_unit == self:
+            new_city = City(self.team.city_image_path, self.pos, f'{random.randint(1, 10)}_{random.randint(1, 10)}',
+                            self.team, 1, None)
             self.team.cities.append(new_city)
             print(self.team.cities)
             global units, units_to_draw
@@ -292,6 +326,32 @@ class Settler(Unit):
             selected_unit = None
 
 
+class Spearman(Unit):
+    def __init__(self, name, pos, team, walk_points):
+        super().__init__(image_path="src/units/spearman.png", name=name, pos=pos, team=team, walk_points=walk_points)
+
+
+class Swordsman(Unit):
+    def __init__(self, name, pos, team, walk_points):
+        super().__init__(image_path="src/units/swordsman.png.png", name=name, pos=pos, team=team,
+                         walk_points=walk_points)
+
+
+class Trireme(Unit):
+    def __init__(self, name, pos, team, walk_points):
+        super().__init__(image_path="src/units/trireme.png", name=name, pos=pos, team=team, walk_points=walk_points)
+
+
+class Warrior(Unit):
+    def __init__(self, name, pos, team, walk_points):
+        super().__init__(image_path="src/units/warrior.png", name=name, pos=pos, team=team, walk_points=walk_points)
+
+
+class Worker(Unit):
+    def __init__(self, name, pos, team, walk_points):
+        super().__init__(image_path="src/units/worker.png", name=name, pos=pos, team=team, walk_points=walk_points)
+
+
 pygame.init()
 size = (800, 600)
 screen = pygame.display.set_mode(size)
@@ -299,7 +359,11 @@ fps = 60
 clock = pygame.time.Clock()
 
 resource_types = ("Strategic", "Valuable", "Bonus")
-teams = (Team("Rome", [], "src/units/trireme.png"), Team("Egypt", [], "src/units/trireme.png"), Team("Russia", [], "src/icons/russia.png"))
+teams = (Team("Danish", [], "src/icons/danish.png"), Team("Dutch", [], "src/icons/dutch.png"),
+         Team("English", [], "src/icons/english.png"),
+         Team("Indian", [], "src/icons/indian.png"), Team("Japanese", [], "src/icons/japanese.png"),
+         Team("Russian", [], "src/icons/russian.png"),
+         Team("Spanish", [], "src/icons/spanish.png"), Team("Swedish", [], "src/icons/swedish.png"))
 Biomes = (Biome("Tundra", 2, 4, "src/biomes/tundra.png"), Biome("Desert", 2, 4, "src/biomes/desert.png"),
           Biome("Swamp", 3, 5, "src/biomes/swamp.png"), Biome("Mountains", 3, 3, "src/biomes/mountains.png"),
           Biome("Plains", 1, 1, "src/biomes/plains.png"), Biome("RollingPlains", 2, 1, "src/biomes/hills.png"),
@@ -340,7 +404,7 @@ while True:
         camera.move(-5, 0)
 
     if keys[pygame.K_SPACE] and selected_unit is not None:
-        units.update("space", game)
+        units.update("settle", game)
 
     camera.update(units)
     camera.update(tiles)
