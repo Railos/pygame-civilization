@@ -7,6 +7,8 @@ import sys
 selected_unit = None
 
 r = 0
+
+
 def update_window():
     if science_window_open:
         screen.fill((255, 255, 255))
@@ -14,8 +16,11 @@ def update_window():
     if culture_window_open:
         screen.fill((255, 255, 255))
         pygame.display.flip()
-    if city_screen_open:
-        open_city_screen(city)
+    if city_screen_open and selected_city:
+        selected_city.open_city_screen()
+        pygame.display.flip()
+    if unit_screen_open:
+        Unit.open_unit_screen()
         pygame.display.flip()
 
 
@@ -29,40 +34,9 @@ def close_window():
     global open_city_screen
     open_city_screen = False
     pygame.display.set_mode(size)
-
-
-def open_city_screen(city):
-    # Создаем поверхность для экрана города, который будет находиться справа
-    city_screen = pygame.Surface((250, 600))  # Размер можно настроить
-    city_screen.fill((200, 200, 200))  # Цвет фона для экрана города
-
-    # Отображаем информацию о городе
-    font = pygame.font.SysFont("Arial", 20)
-    name_text = font.render(f"Город: {city.name}", True, (0, 0, 0))
-
-    gold_income = font.render(f"Золото за ход:", True, (0, 0, 0))
-    production_per_turn = font.render(f"Производство:", True, (0, 0, 0))
-    turn_to_grow = font.render(f"Ходов до роста:", True, (0, 0, 0))
-    building = font.render(f"Построенные здания:", True, (0, 0, 0))
-    to_build = font.render(f"Здания", True, (0, 0, 0))
-    Units = font.render(f"Юниты", True, (0, 0, 0))
-
-    population_text = font.render(f"Население: {city.population}", True, (0, 0, 0))
-    religion_text = font.render(f"Религия: {city.religion if city.religion else 'Нет'}", True, (0, 0, 0))
-    queue_text = font.render(f"Очередь:", True, (0, 0, 0))
-
-    city_screen.blit(name_text, (10, 10))
-    city_screen.blit(population_text, (10, 40))
-    city_screen.blit(religion_text, (10, 70))
-    city_screen.blit(gold_income, (10, 100))
-    city_screen.blit(production_per_turn, (10, 130))
-    city_screen.blit(turn_to_grow, (10, 160))
-    city_screen.blit(to_build, (10, 190))
-    city_screen.blit(Units, (10, 230))
-    city_screen.blit(queue_text, (10, 260))
-    city_screen.blit(building, (10, 290))
-    # Отображаем экран города справа от экрана игры
-    screen.blit(city_screen, (screen.get_width() - city_screen.get_width(), 0))
+    global unit_screen_open
+    open_city_screen = False
+    pygame.display.set_mode(size)
 
 
 def find_shortest_path(grid, start, goal):
@@ -265,6 +239,11 @@ class Unit(pygame.sprite.Sprite):
         self.rect.center = game.map[self.pos[1]][self.pos[0]].rect.center
         self.walk_points = walk_points
 
+        self.font = pygame.font.SysFont("Arial", 20)
+        self.unit_screen = pygame.Surface((600, 250))
+        self.name_of_units = self.font.render(f"{self.name}", True, (0, 0, 0))
+        self.walk = self.font.render(f"Перемещение:{self.walk_points}", True, (0, 0, 0))
+
     def update(self, event, game: Game):
         if type(event) == pygame.event.Event and event.type == pygame.MOUSEBUTTONUP and event.button == 1:
             global selected_unit
@@ -285,6 +264,23 @@ class Unit(pygame.sprite.Sprite):
 
     def deselect(self):
         self.image = self.image_original.copy()
+
+    def open_unit_screen(self):
+        if selected_unit == self:
+            # Создаем окно внизу экрана
+            unit_screen = pygame.Surface((screen.get_width(), 200))
+            unit_screen.fill((200, 200, 200))
+
+            # Отображаем информацию о юните
+            name_text = self.font.render(f"Юнит: {self.name}", True, (0, 0, 0))
+            walk_text = self.font.render(f"Перемещение: {self.walk_points}", True, (0, 0, 0))
+
+            # Размещение текста
+            unit_screen.blit(name_text, (10, 10))
+            unit_screen.blit(walk_text, (10, 40))
+
+            # Отображаем окно на экране
+            screen.blit(unit_screen, (0, screen.get_height() - 200))
 
 
 class Resource:
@@ -331,6 +327,37 @@ class City(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(topleft=pos)
         self.rect.center = game.map[pos[1]][pos[0]].rect.center
         self.pos = pos
+
+        self.font = pygame.font.SysFont("Arial", 20)
+        self.city_screen = pygame.Surface((250, 600))
+        self.gold_income = self.font.render(f"Золото за ход:", True, (0, 0, 0))
+        self.production_per_turn = self.font.render(f"Производство:", True, (0, 0, 0))
+        self.turn_to_grow = self.font.render(f"Ходов до роста:", True, (0, 0, 0))
+        self.building = self.font.render(f"Построенные здания:", True, (0, 0, 0))
+        self.to_build = self.font.render(f"Здания", True, (0, 0, 0))
+        self.Units = self.font.render(f"Юниты", True, (0, 0, 0))
+
+        self.population_text = self.font.render(f"Население: {self.population}", True, (0, 0, 0))
+        self.religion_text = self.font.render(f"Религия: {self.religion if self.religion else 'Нет'}", True, (0, 0, 0))
+        self.queue_text = self.font.render(f"Очередь:", True, (0, 0, 0))
+        self.name_text = self.font.render(f"Город: {self.name}", True, (0, 0, 0))
+
+    def open_city_screen(self):
+        self.city_screen.fill((200, 200, 200))  # Цвет фона для экрана города
+
+        # Отображаем информацию о городе
+        self.city_screen.blit(self.name_text, (10, 10))
+        self.city_screen.blit(self.population_text, (10, 40))
+        self.city_screen.blit(self.religion_text, (10, 70))
+        self.city_screen.blit(self.gold_income, (10, 100))
+        self.city_screen.blit(self.production_per_turn, (10, 130))
+        self.city_screen.blit(self.turn_to_grow, (10, 160))
+        self.city_screen.blit(self.to_build, (10, 190))
+        self.city_screen.blit(self.Units, (10, 230))
+        self.city_screen.blit(self.queue_text, (10, 260))
+        self.city_screen.blit(self.building, (10, 290))
+        # Отображаем экран города справа от экрана игры
+        screen.blit(self.city_screen, (screen.get_width() - self.city_screen.get_width(), 0))
 
 
 class Archer(Unit):
@@ -454,6 +481,7 @@ culture_icon = culture_icon_original.copy()
 science_window_open = False
 culture_window_open = False
 
+unit_screen_open = False
 city_screen_open = False
 selected_city = None
 # Позиция значка в левом верхнем углу
@@ -470,6 +498,7 @@ while True:
         if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
             if selected_unit is not None:
                 tiles.update(event, game)
+                update_window()
             for city in cities:
                 if city.rect.collidepoint(event.pos):
                     selected_city = city
@@ -494,7 +523,7 @@ while True:
 
     if keys[pygame.K_SPACE] and selected_unit is not None:
         units.update("settle", game)
-    if keys[pygame.K_ESCAPE] and (science_window_open or culture_window_open or open_city_screen):
+    if keys[pygame.K_ESCAPE] and (science_window_open or culture_window_open or open_city_screen or unit_screen_open):
         close_window()
 
     camera.update(units)
@@ -506,6 +535,9 @@ while True:
     screen.blit(science_icon, (icon_pos[0], icon_pos[1]))
     screen.blit(culture_icon, (icon_pos_culture[0], icon_pos_culture[1]))
     update_window()
+    if selected_unit is not None:
+        selected_unit.open_unit_screen()
+
     camera.reset_offset()
     pygame.display.flip()
     clock.tick(fps)
