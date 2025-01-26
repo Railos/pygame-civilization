@@ -6,7 +6,7 @@ import sys
 
 selected_unit = None
 
-
+r = 0
 def update_window():
     if science_window_open:
         screen.fill((255, 255, 255))
