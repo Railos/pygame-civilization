@@ -7,6 +7,24 @@ import sys
 selected_unit = None
 
 
+def update_window():
+    if science_window_open :
+        screen.fill((255, 255, 255))
+        pygame.display.flip()
+    if culture_window_open:
+        screen.fill((255, 255, 255))
+        pygame.display.flip()
+
+
+def close_window():
+    global science_window_open
+    science_window_open = False
+    pygame.display.set_mode(size)
+    global culture_window_open
+    culture_window_open = False
+    pygame.display.set_mode(size)
+
+
 def find_shortest_path(grid, start, goal):
     """
     Находит кратчайший путь на двумерной карте от start до goal.
@@ -355,6 +373,7 @@ class Worker(Unit):
 pygame.init()
 size = (800, 600)
 screen = pygame.display.set_mode(size)
+
 fps = 60
 clock = pygame.time.Clock()
 
@@ -381,6 +400,23 @@ tiles = pygame.sprite.Group(game.map)
 cities = pygame.sprite.Group(cities_to_draw)
 
 camera = Camera()
+
+science_icon = pygame.image.load("src/icons/science_icon.png").convert_alpha()
+science_icon = pygame.transform.scale(science_icon, (30, 30))
+science_icon_original = science_icon.subsurface(science_icon.get_bounding_rect())
+science_icon = science_icon_original.copy()
+
+culture_icon = pygame.image.load("src/icons/culture.png").convert_alpha()
+culture_icon = pygame.transform.scale(culture_icon, (30, 30))
+culture_icon_original = culture_icon.subsurface(culture_icon.get_bounding_rect())
+culture_icon = culture_icon_original.copy()
+science_window_open = False
+culture_window_open = False
+
+# Позиция значка в левом верхнем углу
+icon_pos = (10, 10)
+icon_pos_culture = (40, 10)
+
 # main loop
 while True:
     events = pygame.event.get()
@@ -392,6 +428,10 @@ while True:
             if selected_unit is not None:
                 tiles.update(event, game)
             units.update(event, game)
+            if pygame.Rect(icon_pos, science_icon.get_size()).collidepoint(event.pos):
+                science_window_open = not science_window_open
+            if pygame.Rect(icon_pos_culture, culture_icon.get_size()).collidepoint(event.pos):
+                culture_window_open = not culture_window_open
 
     keys = pygame.key.get_pressed()
     if keys[pygame.K_w]:
@@ -405,6 +445,8 @@ while True:
 
     if keys[pygame.K_SPACE] and selected_unit is not None:
         units.update("settle", game)
+    if keys[pygame.K_ESCAPE] and (science_window_open or culture_window_open):
+        close_window()
 
     camera.update(units)
     camera.update(tiles)
@@ -412,6 +454,9 @@ while True:
     tiles.draw(screen)
     units.draw(screen)
     cities.draw(screen)
+    screen.blit(science_icon, (icon_pos[0], icon_pos[1]))
+    screen.blit(culture_icon, (icon_pos_culture[0], icon_pos_culture[1]))
+    update_window()
     camera.reset_offset()
     pygame.display.flip()
     clock.tick(fps)
