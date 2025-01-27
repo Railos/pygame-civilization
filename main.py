@@ -243,6 +243,7 @@ class Unit(pygame.sprite.Sprite):
         self.unit_screen = pygame.Surface((600, 250))
         self.name_of_units = self.font.render(f"{self.name}", True, (0, 0, 0))
         self.walk = self.font.render(f"Перемещение:{self.walk_points}", True, (0, 0, 0))
+        self.hp = 100
 
     def update(self, event, game: Game):
         if type(event) == pygame.event.Event and event.type == pygame.MOUSEBUTTONUP and event.button == 1:
@@ -274,10 +275,12 @@ class Unit(pygame.sprite.Sprite):
             # Отображаем информацию о юните
             name_text = self.font.render(f"Юнит: {self.name}", True, (0, 0, 0))
             walk_text = self.font.render(f"Перемещение: {self.walk_points}", True, (0, 0, 0))
+            hp_points = self.font.render(f"Здоровье:{self.hp}", True, (0, 0, 0))
 
             # Размещение текста
             unit_screen.blit(name_text, (10, 10))
             unit_screen.blit(walk_text, (10, 40))
+            unit_screen.blit(hp_points, (300, 30))
 
             # Отображаем окно на экране
             screen.blit(unit_screen, (0, screen.get_height() - 200))
