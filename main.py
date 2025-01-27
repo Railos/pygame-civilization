@@ -8,21 +8,17 @@ selected_unit = None
 
 
 def update_window():
-    if science_window_open :
-        screen.fill((255, 255, 255))
-        pygame.display.flip()
+    if science_window_open:
+        screen.blit(scroll.image, (0, 0))
     if culture_window_open:
-        screen.fill((255, 255, 255))
-        pygame.display.flip()
+        screen.blit(scroll.image, (0, 0))
 
 
 def close_window():
     global science_window_open
     science_window_open = False
-    pygame.display.set_mode(size)
     global culture_window_open
     culture_window_open = False
-    pygame.display.set_mode(size)
 
 
 def find_shortest_path(grid, start, goal):
@@ -370,9 +366,28 @@ class Worker(Unit):
         super().__init__(image_path="src/units/worker.png", name=name, pos=pos, team=team, walk_points=walk_points)
 
 
+class Image:
+    def __init__(self, path_to_image, size):
+        self.image = pygame.image.load(path_to_image).convert_alpha()
+        self.image = pygame.transform.scale(self.image, size)
+        image_original = self.image.subsurface(self.image.get_bounding_rect())
+        self.image = image_original.copy()
+        self.rect = self.image.get_rect()
+
+    def change_size(self, new_size):
+        self.image = pygame.transform.scale(self.image, new_size)
+        image_original = self.image.subsurface(self.image.get_bounding_rect())
+        self.image = image_original.copy()
+
+
+class TechMenu:
+    def __init__(self, techs):
+        self.techs = techs
+        
+
 pygame.init()
-size = (800, 600)
-screen = pygame.display.set_mode(size)
+window_size = (1280, 920)
+screen = pygame.display.set_mode(window_size)
 
 fps = 60
 clock = pygame.time.Clock()
@@ -401,15 +416,10 @@ cities = pygame.sprite.Group(cities_to_draw)
 
 camera = Camera()
 
-science_icon = pygame.image.load("src/icons/science_icon.png").convert_alpha()
-science_icon = pygame.transform.scale(science_icon, (30, 30))
-science_icon_original = science_icon.subsurface(science_icon.get_bounding_rect())
-science_icon = science_icon_original.copy()
+science_icon = Image("src/icons/science_icon.png", (30, 30))
+culture_icon = Image("src/icons/culture.png", (30, 30))
+scroll = Image("src/icons/scroll.png", window_size)
 
-culture_icon = pygame.image.load("src/icons/culture.png").convert_alpha()
-culture_icon = pygame.transform.scale(culture_icon, (30, 30))
-culture_icon_original = culture_icon.subsurface(culture_icon.get_bounding_rect())
-culture_icon = culture_icon_original.copy()
 science_window_open = False
 culture_window_open = False
 
@@ -428,20 +438,21 @@ while True:
             if selected_unit is not None:
                 tiles.update(event, game)
             units.update(event, game)
-            if pygame.Rect(icon_pos, science_icon.get_size()).collidepoint(event.pos):
+            if pygame.Rect(icon_pos, science_icon.image.get_size()).collidepoint(event.pos):
                 science_window_open = not science_window_open
-            if pygame.Rect(icon_pos_culture, culture_icon.get_size()).collidepoint(event.pos):
+            if pygame.Rect(icon_pos_culture, culture_icon.image.get_size()).collidepoint(event.pos):
                 culture_window_open = not culture_window_open
 
     keys = pygame.key.get_pressed()
-    if keys[pygame.K_w]:
-        camera.move(0, 5)
-    if keys[pygame.K_s]:
-        camera.move(0, -5)
-    if keys[pygame.K_a]:
-        camera.move(5, 0)
-    if keys[pygame.K_d]:
-        camera.move(-5, 0)
+    if not culture_window_open and not science_window_open:
+        if keys[pygame.K_w]:
+            camera.move(0, 5)
+        if keys[pygame.K_s]:
+            camera.move(0, -5)
+        if keys[pygame.K_a]:
+            camera.move(5, 0)
+        if keys[pygame.K_d]:
+            camera.move(-5, 0)
 
     if keys[pygame.K_SPACE] and selected_unit is not None:
         units.update("settle", game)
@@ -454,8 +465,8 @@ while True:
     tiles.draw(screen)
     units.draw(screen)
     cities.draw(screen)
-    screen.blit(science_icon, (icon_pos[0], icon_pos[1]))
-    screen.blit(culture_icon, (icon_pos_culture[0], icon_pos_culture[1]))
+    screen.blit(science_icon.image, (icon_pos[0], icon_pos[1]))
+    screen.blit(culture_icon.image, (icon_pos_culture[0], icon_pos_culture[1]))
     update_window()
     camera.reset_offset()
     pygame.display.flip()
