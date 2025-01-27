@@ -91,11 +91,31 @@ class Game:
         self.teams = teams
         self.player_team = player_team
         self.map_size = map_size
+        self.resources = []  # Список для хранения всех ресурсов
         self.map = [[None for z in range(map_size[0])] for i in range(map_size[1])]
         self.screen = screen
 
+    def generate_resources(self):
+        for y in range(len(self.map_data)):
+            for x in range(len(self.map_data[0])):
+                # Проверяем, в каком биоме находимся
+                if self.map_data[y][x] == Biomes[5]:  # Пример для гор
+                    resource_type = random.choice(["Железо", "Алмазы" ])
+                    self.resources.append(Resource(resource_type, x, y))
+                elif self.map_data[y][x] == 'forest':  # Пример для леса
+                    resource_type = random.choice(['Wood'])
+                    self.resources.append(Resource(resource_type, x, y))
+                elif self.map_data[y][x] == 'desert':  # Пример для пустыни
+                    resource_type = random.choice(['Oil'])
+                    self.resources.append(Resource(resource_type, x, y))
+                self.resources.append(Resource(resource_type, x, y))
+    def render_resources(self, screen):
+        for resource in self.resources:
+            resource.render(screen)
+
     def start_game(self):
         self.generate_map()
+        self.generate_resources()
         # self.player_team = random.choice(self.teams)
 
     def generate_map(self):
@@ -190,11 +210,14 @@ class Team:
 
 
 class Biome:
-    def __init__(self, name, walk_difficulty, harshness, image_path):
+    def __init__(self, name, walk_difficulty, harshness, image_path, production, food, gold):
         self.name = name
         self.walk_difficulty = walk_difficulty
         self.harshness = harshness
         self.image_path = image_path
+        self.production = production
+        self.food = food
+        self.gold = gold
 
 
 class Tile(pygame.sprite.Sprite):
@@ -287,10 +310,22 @@ class Unit(pygame.sprite.Sprite):
 
 
 class Resource:
-    def __init__(self, name, resource_type, rarity):
+    def __init__(self, name, resource_type, rarity, biome, production, food, gold):
         self.name = name
         self.type = resource_type
         self.rarity = rarity
+        self.production = production
+        self.food = food
+        self.gold = gold
+        self.type = type  # Тип ресурса (например, золото, нефть, дерево)
+        self.x = x  # Координаты ресурса
+        self.y = y
+        self.image = pygame.Surface((TILE_SIZE, TILE_SIZE))  # Размер ресурса на карте
+        self.image.fill((255, 255, 0))
+
+    def render(self, screen):
+        # Рисуем ресурс на экране
+        screen.blit(self.image, (self.x * TILE_SIZE, self.y * TILE_SIZE))
 
 
 class Camera:
@@ -453,11 +488,25 @@ teams = (Team("Danish", [], "src/icons/danish.png"), Team("Dutch", [], "src/icon
          Team("Indian", [], "src/icons/indian.png"), Team("Japanese", [], "src/icons/japanese.png"),
          Team("Russian", [], "src/icons/russian.png"),
          Team("Spanish", [], "src/icons/spanish.png"), Team("Swedish", [], "src/icons/swedish.png"))
-Biomes = (Biome("Tundra", 2, 4, "src/biomes/tundra.png"), Biome("Desert", 2, 4, "src/biomes/desert.png"),
-          Biome("Swamp", 3, 5, "src/biomes/swamp.png"), Biome("Mountains", 3, 3, "src/biomes/mountains.png"),
-          Biome("Plains", 1, 1, "src/biomes/plains.png"), Biome("RollingPlains", 2, 1, "src/biomes/hills.png"),
-          Biome("Jungle", 3, 2, "src/biomes/jungle.png"), Biome("Woods", 1, 1, "src/biomes/woods.png"),
-          Biome("Sea", 3, 5, "src/biomes/sea.png"))
+Biomes = (
+    Biome("Tundra", 2, 4, "src/biomes/tundra.png", 0, 1, 0, 0), Biome("Desert", 2, 4, "src/biomes/desert.png", 0, 0, 0),
+    Biome("Swamp", 3, 5, "src/biomes/swamp.png", 0, 3, 0),
+    Biome("Mountains", 3, 3, "src/biomes/mountains.png", 3, 0, 0),
+    Biome("Plains", 1, 1, "src/biomes/plains.png", 1, 1, 0),
+    Biome("RollingPlains", 2, 1, "src/biomes/hills.png", 2, 1, 0),
+    Biome("Jungle", 3, 2, "src/biomes/jungle.png", 1, 2, 0), Biome("Woods", 1, 1, "src/biomes/woods.png", 2, 1, 0),
+    Biome("Sea", 3, 5, "src/biomes/sea.png", 0, 1, 1))
+resourse = (Resource("Лошади", "Стратигический", 0.05, Biomes[4], 1, 2, 0),
+            Resource("Железо", "Стратигический", 0.05, Biomes[5], 2, 0, 0),
+            Resource("Меха", "Редкий", 0.05, Biomes[0], 1, 1, 3),
+            Resource("Алмазы", "Редкий", 0.05, Biomes[5], 2, 0, 3),
+            Resource("Слоновая кость", "Редкий", 0.05, Biomes[4], 1, 1, 3),
+            Resource("Шелк", "Редкий", 0.05, Biomes[6], 2, 0, 3),
+            Resource("Оазис", "Бонусный", 0.05, Biomes[1], 0, 3, 1),
+            Resource("Рыба", "Бонусный", 0.05, Biomes[8], 1, 3, 1),
+            Resource("Олени", "Бонысный", 0.05, Biomes[1], 1, 1, 0),
+            Resource("Пшеница", "Бонусный", 0.05, Biomes[4], 0, 1, 0),
+            Resource("Сахар", "Бонусный", 0.05, Biomes[6], 0, 1, 2))
 
 game = Game(1, teams, teams[2], (30, 30), screen)
 tile_size = 90
