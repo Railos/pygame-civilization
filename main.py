@@ -433,22 +433,39 @@ class Worker(Unit):
 
 
 class Image:
-    def __init__(self, path_to_image, size):
+    def __init__(self, path_to_image, size, pos=(0, 0)):
         self.image = pygame.image.load(path_to_image).convert_alpha()
         self.image = pygame.transform.scale(self.image, size)
         image_original = self.image.subsurface(self.image.get_bounding_rect())
         self.image = image_original.copy()
         self.rect = self.image.get_rect()
+        self.pos = pos
+        self.rect.topleft = pos
 
     def change_size(self, new_size):
         self.image = pygame.transform.scale(self.image, new_size)
         image_original = self.image.subsurface(self.image.get_bounding_rect())
         self.image = image_original.copy()
+        self.rect = self.image.get_rect()
+
+    def change_pos(self, new_pos):
+        self.rect.topleft = new_pos
 
 
-class TechMenu:
-    def __init__(self, techs):
-        self.techs = techs
+class Tech(pygame.sprite.Sprite):
+    def __init__(self, image: Image, requirements, unlocked=False):
+        super().__init__()
+        self.image = image
+        self.requirements = requirements
+        self.unlocked = unlocked
+
+    def update(self, event):
+        if type(event) == pygame.event.Event and event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+            for i in self.requirements:
+                if not i.unlocked:
+                    return
+            print("UNLOCKED UWU!!!!!!!!!!!")
+            self.unlocked = True
 
 
 pygame.init()
@@ -457,6 +474,29 @@ screen = pygame.display.set_mode(window_size)
 
 fps = 60
 clock = pygame.time.Clock()
+
+start_game = Image("src/icons/start_game.png", (150, 75), (400, 200))
+loading = Image("src/icons/loading.png", (150, 75), (400, 400))
+game_started = False
+while True:
+    events = pygame.event.get()
+    screen.fill((0, 0, 0))
+    for event in events:
+        if event.type == pygame.QUIT:
+            pygame.quit()
+        if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+            if start_game.rect.collidepoint(event.pos):
+                game_started = True
+
+    screen.blit(start_game.image, start_game.pos)
+    if game_started:
+        screen.blit(loading.image, loading.pos)
+        pygame.display.flip()
+        clock.tick(fps)
+        break
+    pygame.display.flip()
+    clock.tick(fps)
+
 
 resource_types = ("Strategic", "Valuable", "Bonus")
 teams = (Team("Danish", [], "src/icons/danish.png"), Team("Dutch", [], "src/icons/dutch.png"),
@@ -482,8 +522,8 @@ cities = pygame.sprite.Group(cities_to_draw)
 
 camera = Camera()
 
-science_icon = Image("src/icons/science_icon.png", (30, 30))
-culture_icon = Image("src/icons/culture.png", (30, 30))
+science_icon = Image("src/icons/science_icon.png", (30, 30), (10, 10))
+culture_icon = Image("src/icons/culture.png", (30, 30), (40, 10))
 scroll = Image("src/icons/scroll.png", window_size)
 
 science_window_open = False
@@ -492,9 +532,7 @@ culture_window_open = False
 unit_screen_open = False
 city_screen_open = False
 selected_city = None
-# Позиция значка в левом верхнем углу
-icon_pos = (10, 10)
-icon_pos_culture = (40, 10)
+
 
 # main loop
 while True:
@@ -514,9 +552,9 @@ while True:
                     update_window()
                     break
             units.update(event, game)
-            if pygame.Rect(icon_pos, science_icon.image.get_size()).collidepoint(event.pos):
+            if science_icon.rect.collidepoint(event.pos):
                 science_window_open = not science_window_open
-            if pygame.Rect(icon_pos_culture, culture_icon.image.get_size()).collidepoint(event.pos):
+            if culture_icon.rect.collidepoint(event.pos):
                 culture_window_open = not culture_window_open
 
     keys = pygame.key.get_pressed()
@@ -540,8 +578,8 @@ while True:
     tiles.draw(screen)
     units.draw(screen)
     cities.draw(screen)
-    screen.blit(science_icon.image, (icon_pos[0], icon_pos[1]))
-    screen.blit(culture_icon.image, (icon_pos_culture[0], icon_pos_culture[1]))
+    screen.blit(science_icon.image, science_icon.pos)
+    screen.blit(culture_icon.image, culture_icon.pos)
     update_window()
     if selected_unit is not None:
         selected_unit.open_unit_screen()
