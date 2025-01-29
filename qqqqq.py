@@ -6,16 +6,12 @@ import sys
 
 selected_unit = None
 
-r = 0
-
 
 def update_window():
     if science_window_open:
-        screen.fill((255, 255, 255))
-        pygame.display.flip()
+        screen.blit(scroll.image, (0, 0))
     if culture_window_open:
-        screen.fill((255, 255, 255))
-        pygame.display.flip()
+        screen.blit(scroll.image, (0, 0))
     if city_screen_open and selected_city:
         selected_city.open_city_screen()
         pygame.display.flip()
@@ -27,16 +23,12 @@ def update_window():
 def close_window():
     global science_window_open
     science_window_open = False
-    pygame.display.set_mode(size)
     global culture_window_open
     culture_window_open = False
-    pygame.display.set_mode(size)
     global open_city_screen
     open_city_screen = False
-    pygame.display.set_mode(size)
     global unit_screen_open
     open_city_screen = False
-    pygame.display.set_mode(size)
 
 
 def find_shortest_path(grid, start, goal):
@@ -91,16 +83,52 @@ class Game:
         self.teams = teams
         self.player_team = player_team
         self.map_size = map_size
-        self.resources = []  # Список для хранения всех ресурсов
         self.map = [[None for z in range(map_size[0])] for i in range(map_size[1])]
         self.screen = screen
 
     def start_game(self):
         self.generate_map()
-        self.generate_resources()
         # self.player_team = random.choice(self.teams)
 
     def generate_map(self):
+        def render_resources(self, screen):
+            for resource in self.resources:
+                resource.render(screen)
+
+        def generate_resources(self):
+            for y in range(len(self.map_data)):
+                for x in range(len(self.map_data[0])):
+                    # Проверяем, в каком биоме находимся
+                    if self.map[x][y].biome == Biomes[5]:
+                        if random.random() <= 0.3:
+                            resource_type = random.choice(["Железо", "Алмазы"])
+                            self.resources.append(Resource(resource_type, x, y))
+                    elif self.map[x][y].biome == Biomes[1]:
+                        if random.random() <= 0.3:
+                            resource_type = random.choice(['Оазис'])
+                            self.resources.append(Resource(resource_type, x, y))
+                    elif self.map[x][y].biome == Biomes[0]:
+                        if random.random() <= 0.3:
+                            resource_type = random.choice(['Меха', 'Олени'])
+                            self.resources.append(Resource(resource_type, x, y))
+                    elif self.map[x][y].biome == Biomes[4]:
+                        if random.random() <= 0.3:
+                            resource_type = random.choice(['Лошади', "Пшеница", 'Слоновая кость'])
+                            self.resources.append(Resource(resource_type, x, y))
+                    elif self.map[x][y].biome == Biomes[6]:
+                        if random.random() <= 0.3:
+                            resource_type = random.choice(['Сахар'])
+                            self.resources.append(Resource(resource_type, x, y))
+                    elif self.map[x][y].biome == Biomes[7]:
+                        if random.random() <= 0.3:
+                            resource_type = random.choice(['Шелк'])
+                            self.resources.append(Resource(resource_type, x, y))
+                    elif self.map[x][y].biome == Biomes[8]:
+                        if random.random() <= 0.3:
+                            resource_type = random.choice(['Рыба'])
+                            self.resources.append(Resource(resource_type, x, y))
+                    self.resources.append(Resource(resource_type, x, y))
+
         def is_valid_pos(x, y):
             """Проверяет, находится ли позиция в пределах карты."""
             return 0 <= x < self.map_size[0] and 0 <= y < self.map_size[1]
@@ -174,6 +202,8 @@ class Game:
                 # Генерация гор (mountains) с шансом
                 elif self.map[y][x].biome == Biomes[4] and random.random() < 0.05:
                     self.map[y][x] = Tile((x * tile_size, y * tile_size), Biomes[3], Biomes[3].image_path, None, False)
+                    if random.random() <= 0.15:
+                        generate_resourses()
 
                 elif self.map[y][x].biome == Biomes[4] and random.random() < 0.5:
                     self.map[y][x] = Tile((x * tile_size, y * tile_size), Biomes[5], Biomes[5].image_path, None, False)
@@ -182,57 +212,7 @@ class Game:
                 # Генерация болот (swamp) вокруг биома "Sea"
                 elif self.map[y][x].biome == Biomes[8] and random.random() < 0.1:
                     generate_biome_chunk((x, y), Biomes[2], (3, 6))  # Генерация болот вокруг моря
-
-    def generate_resources(self):
-        # Генерация ресурсов на карте
-        for y in range(self.map_size[1]):
-            for x in range(self.map_size[0]):
-                tile = self.map[y][x]
-                if tile and tile.biome:
-                    # Проверяем биом и вероятность появления ресурсов
-                    if tile.biome == Biomes[5]:
-                        if random.random() <= 0.3:
-                            resource_type = random.choice(["Железо", "Алмазы"])
-                            if resource_type == "Алмазы":
-                                self.resources.append(Resource(resource_types[1], "Valuable", 0.05, Biomes[0], 2, 0, 3, tile))
-                            else:
-                                self.resources.append(Resource(resource_types[0], "Strategic", 0.05, Biomes[0], 2, 0, 0, tile))
-                    elif tile.biome == Biomes[1]:
-                        if random.random() <= 0.3:
-                            resource_type = "Оазис"
-                            self.resources.append(Resource(resource_types[2], "Bonus", 0.05, Biomes[0], 0, 3, 1, tile))
-                    elif tile.biome == Biomes[0]:
-                        if random.random() <= 0.3:
-                            resource_type = random.choice(["Меха", "Олени"])
-                            if resource_type == "Меха":
-                                self.resources.append(Resource(resource_types[1], "Valuable", 0.05, Biomes[0], 1, 1, 3, tile))
-                            else:
-                                self.resources.append(Resource(resource_types[2], "Bonus", 0.05, Biomes[0], 1, 1, 0, tile))
-                    elif tile.biome == Biomes[4]:
-                        if random.random() <= 0.3:
-                            resource_type = random.choice(["Лошади", "Пшеница", "Слоновая кость"])
-                            if resource_type == "Лошади":
-                                self.resources.append(Resource(resource_types[0], "Strategic", 0.05, Biomes[4], 1, 2, 0, tile))
-                            elif resource_type == "Пшеница":
-                                self.resources.append(Resource(resource_types[1], "Bonus", 0.05, Biomes[4], 0, 1, 0, tile))
-                            else:
-                                self.resources.append(Resource(resource_types[2],"Valuable", 0.05, Biomes[4], 1, 1, 3, tile))
-                    elif tile.biome == Biomes[6]:
-                        if random.random() <= 0.3:
-                            resource_type = "Сахар"
-                            self.resources.append(Resource(resource_types,"Bonus", 0.05, Biomes[4], 0, 1, 2, tile))
-                    elif tile.biome == Biomes[7]:
-                        if random.random() <= 0.3:
-                            resource_type = "Шелк"
-                            self.resources.append(Resource(resource_types,"Valuable", 0.05, Biomes[4], 2, 0, 3, tile))
-                    elif tile.biome == Biomes[8]:
-                        if random.random() <= 0.3:
-                            resource_type = "Рыба"
-                            self.resources.append(Resource(resource_types,"Valuable", 0.05, Biomes[4], 1, 3, 1, tile))
-
-    def render_resources(self):
-        for resource in self.resources:
-            resource.render(self.screen)
+                self.gener
 
 
 class Team:
@@ -243,14 +223,11 @@ class Team:
 
 
 class Biome:
-    def __init__(self, name, walk_difficulty, harshness, image_path, production, food, gold):
+    def __init__(self, name, walk_difficulty, harshness, image_path):
         self.name = name
         self.walk_difficulty = walk_difficulty
         self.harshness = harshness
         self.image_path = image_path
-        self.production = production
-        self.food = food
-        self.gold = gold
 
 
 class Tile(pygame.sprite.Sprite):
@@ -342,9 +319,6 @@ class Unit(pygame.sprite.Sprite):
             screen.blit(unit_screen, (0, screen.get_height() - 200))
 
 
-tile_size = 90
-
-
 class Resource:
     def __init__(self, name, resource_type, rarity, biome, production, food, gold, pos):
         self.name = name
@@ -355,12 +329,12 @@ class Resource:
         self.food = food
         self.gold = gold
         self.type = type
-        self.image = pygame.Surface((tile_size, tile_size))  # Размер ресурса на карте
+        self.image = pygame.Surface((90, 90))  # Размер ресурса на карте
         self.image.fill((255, 255, 0))
 
     def render(self, screen):
         # Рисуем ресурс на экране
-        screen.blit(self.image, (self.pos[0] * tile_size, self.pos[1] * tile_size))
+        screen.blit(self.image, (self.pos[0] * 90, self.pos[1] * 90))
 
 
 class Camera:
@@ -510,9 +484,28 @@ class Worker(Unit):
         super().__init__(image_path="src/units/worker.png", name=name, pos=pos, team=team, walk_points=walk_points)
 
 
+class Image:
+    def __init__(self, path_to_image, size):
+        self.image = pygame.image.load(path_to_image).convert_alpha()
+        self.image = pygame.transform.scale(self.image, size)
+        image_original = self.image.subsurface(self.image.get_bounding_rect())
+        self.image = image_original.copy()
+        self.rect = self.image.get_rect()
+
+    def change_size(self, new_size):
+        self.image = pygame.transform.scale(self.image, new_size)
+        image_original = self.image.subsurface(self.image.get_bounding_rect())
+        self.image = image_original.copy()
+
+
+class TechMenu:
+    def __init__(self, techs):
+        self.techs = techs
+
+
 pygame.init()
-size = (800, 600)
-screen = pygame.display.set_mode(size)
+window_size = (800, 600)
+screen = pygame.display.set_mode(window_size)
 
 fps = 60
 clock = pygame.time.Clock()
@@ -523,25 +516,22 @@ teams = (Team("Danish", [], "src/icons/danish.png"), Team("Dutch", [], "src/icon
          Team("Indian", [], "src/icons/indian.png"), Team("Japanese", [], "src/icons/japanese.png"),
          Team("Russian", [], "src/icons/russian.png"),
          Team("Spanish", [], "src/icons/spanish.png"), Team("Swedish", [], "src/icons/swedish.png"))
-Biomes = (
-    Biome("Tundra", 2, 4, "src/biomes/tundra.png", 0, 1, 0), Biome("Desert", 2, 4, "src/biomes/desert.png", 0, 0, 0),
-    Biome("Swamp", 3, 5, "src/biomes/swamp.png", 0, 3, 0),
-    Biome("Mountains", 3, 3, "src/biomes/mountains.png", 3, 0, 0),
-    Biome("Plains", 1, 1, "src/biomes/plains.png", 1, 1, 0),
-    Biome("RollingPlains", 2, 1, "src/biomes/hills.png", 2, 1, 0),
-    Biome("Jungle", 3, 2, "src/biomes/jungle.png", 1, 2, 0), Biome("Woods", 1, 1, "src/biomes/woods.png", 2, 1, 0),
-    Biome("Sea", 3, 5, "src/biomes/sea.png", 0, 1, 1))
-resourse = (Resource("Лошади", "Стратигический", 0.05, Biomes[4], 1, 2, 0, (1, 1)),
-            Resource("Железо", "Стратигический", 0.05, Biomes[5], 2, 0, 0, (1, 1)),
-            Resource("Меха", "Редкий", 0.05, Biomes[0], 1, 1, 3, (1, 1)),
-            Resource("Алмазы", "Редкий", 0.05, Biomes[5], 2, 0, 3, (1, 1)),
-            Resource("Слоновая кость", "Редкий", 0.05, Biomes[4], 1, 1, 3, (1, 1)),
-            Resource("Шелк", "Редкий", 0.05, Biomes[7], 2, 0, 3, (1, 1)),
-            Resource("Оазис", "Бонусный", 0.05, Biomes[1], 0, 3, 1, (1, 1)),
-            Resource("Рыба", "Бонусный", 0.05, Biomes[8], 1, 3, 1, (1, 1)),
-            Resource("Олени", "Бонысный", 0.05, Biomes[0], 1, 1, 0, (1, 1)),
-            Resource("Пшеница", "Бонусный", 0.05, Biomes[4], 0, 1, 0, (1, 1)),
-            Resource("Сахар", "Бонусный", 0.05, Biomes[6], 0, 1, 2, (1, 1)))
+Biomes = (Biome("Tundra", 2, 4, "src/biomes/tundra.png"), Biome("Desert", 2, 4, "src/biomes/desert.png"),
+          Biome("Swamp", 3, 5, "src/biomes/swamp.png"), Biome("Mountains", 3, 3, "src/biomes/mountains.png"),
+          Biome("Plains", 1, 1, "src/biomes/plains.png"), Biome("RollingPlains", 2, 1, "src/biomes/hills.png"),
+          Biome("Jungle", 3, 2, "src/biomes/jungle.png"), Biome("Woods", 1, 1, "src/biomes/woods.png"),
+          Biome("Sea", 3, 5, "src/biomes/sea.png"))
+resource = (Resource("Лошади", resource_types[0], 0.15, Biomes[4], 1, 2, 0),
+            Resource("Железо", resource_types[0], 0.05, Biomes[5], 2, 0, 0),
+            Resource("Меха", resource_types[1], 0.05, Biomes[0], 1, 1, 3),
+            Resource("Алмазы", resource_types[1], 0.05, Biomes[5], 2, 0, 3),
+            Resource("Слоновая кость", resource_types[1], 0.05, Biomes[4], 1, 1, 3),
+            Resource("Шелк", resource_types[1], 0.05, Biomes[7], 2, 0, 3),
+            Resource("Оазис", resource_types[2], 0.05, Biomes[1], 0, 3, 1),
+            Resource("Рыба", resource_types[2], 0.05, Biomes[8], 1, 3, 1),
+            Resource("Олени", resource_types[2], 0.05, Biomes[0], 1, 1, 0),
+            Resource("Пшеница", resource_types[2], 0.05, Biomes[4], 0, 1, 0),
+            Resource("Сахар", resource_types[2], 0.05, Biomes[6], 0, 1, 2))
 
 game = Game(1, teams, teams[2], (30, 30), screen)
 tile_size = 90
@@ -555,15 +545,9 @@ cities = pygame.sprite.Group(cities_to_draw)
 
 camera = Camera()
 
-science_icon = pygame.image.load("src/icons/science_icon.png").convert_alpha()
-science_icon = pygame.transform.scale(science_icon, (30, 30))
-science_icon_original = science_icon.subsurface(science_icon.get_bounding_rect())
-science_icon = science_icon_original.copy()
-
-culture_icon = pygame.image.load("src/icons/culture.png").convert_alpha()
-culture_icon = pygame.transform.scale(culture_icon, (30, 30))
-culture_icon_original = culture_icon.subsurface(culture_icon.get_bounding_rect())
-culture_icon = culture_icon_original.copy()
+science_icon = Image("src/icons/science_icon.png", (30, 30))
+culture_icon = Image("src/icons/culture.png", (30, 30))
+scroll = Image("src/icons/scroll.png", window_size)
 
 science_window_open = False
 culture_window_open = False
@@ -593,9 +577,9 @@ while True:
                     update_window()
                     break
             units.update(event, game)
-            if pygame.Rect(icon_pos, science_icon.get_size()).collidepoint(event.pos):
+            if pygame.Rect(icon_pos, science_icon.image.get_size()).collidepoint(event.pos):
                 science_window_open = not science_window_open
-            if pygame.Rect(icon_pos_culture, culture_icon.get_size()).collidepoint(event.pos):
+            if pygame.Rect(icon_pos_culture, culture_icon.image.get_size()).collidepoint(event.pos):
                 culture_window_open = not culture_window_open
 
     keys = pygame.key.get_pressed()
@@ -619,8 +603,8 @@ while True:
     tiles.draw(screen)
     units.draw(screen)
     cities.draw(screen)
-    screen.blit(science_icon, (icon_pos[0], icon_pos[1]))
-    screen.blit(culture_icon, (icon_pos_culture[0], icon_pos_culture[1]))
+    screen.blit(science_icon.image, (icon_pos[0], icon_pos[1]))
+    screen.blit(culture_icon.image, (icon_pos_culture[0], icon_pos_culture[1]))
     update_window()
     if selected_unit is not None:
         selected_unit.open_unit_screen()
