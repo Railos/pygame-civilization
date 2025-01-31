@@ -109,6 +109,7 @@ class Game:
         # self.player_team = random.choice(self.teams)
 
     def generate_map(self):
+
         def is_valid_pos(x, y):
             """Проверяет, находится ли позиция в пределах карты."""
             return 0 <= x < self.map_size[0] and 0 <= y < self.map_size[1]
@@ -135,6 +136,8 @@ class Game:
                     random.shuffle(neighbors)
                     queue.extend(neighbors)
 
+        global resources_to_draw
+
         # Шаг 1: Генерация крупных биомов
         biome_distribution = {
             Biomes[4]: (10, 15),
@@ -142,7 +145,7 @@ class Game:
             Biomes[1]: (5, 10),
             Biomes[8]: (10, 15),
             Biomes[6]: (5, 10),
-            Biomes[3]: (4, 6),
+            Biomes[3]: (5, 8),
             Biomes[5]: (3, 6)
         }
 
@@ -156,14 +159,10 @@ class Game:
                 if (i < tundra_down or i > self.map_size[0] - tundra_up - 1) and not (
                         j < sea_left or j > self.map_size[0] - sea_right - 1):
                     biome = Biomes[0]
-                    self.map[i][j] = Tile((j * tile_size, i * tile_size), biome, biome.image_path,
-                                          random.choice(resource_types),
-                                          False)
+                    self.map[i][j] = Tile((j * tile_size, i * tile_size), biome, biome.image_path, None, False)
                 elif j < sea_left or j > self.map_size[1] - sea_right - 1:
                     biome = Biomes[8]
-                    self.map[i][j] = Tile((j * tile_size, i * tile_size), biome, biome.image_path,
-                                          random.choice(resource_types),
-                                          False)
+                    self.map[i][j] = Tile((j * tile_size, i * tile_size), biome, biome.image_path, None, False)
 
         for biome, size_range in biome_distribution.items():
             for _ in range(random.randint(3, 6)):  # Несколько областей каждого биома
@@ -187,9 +186,63 @@ class Game:
                     self.map[y][x] = Tile((x * tile_size, y * tile_size), Biomes[5], Biomes[5].image_path, None, False)
                     generate_biome_chunk((x, y), Biomes[5], (3, 6))
 
-                # Генерация болот (swamp) вокруг биома "Sea"
-                elif self.map[y][x].biome == Biomes[8] and random.random() < 0.1:
-                    generate_biome_chunk((x, y), Biomes[2], (3, 6))  # Генерация болот вокруг моря
+    def generate_resources(self):
+        global resources_to_draw
+        for i in self.map:
+            for j in i:
+                k = random.randint(0, 200)
+                resource = None
+                if j.biome == Biomes[0]:
+                    if k <= 10:
+                        resource = Resource("Furs", "src/resources/Furs.png", "Valuable", 1, 1, 3, j)
+                        j.resource = resource
+                        resources_to_draw.append(resource)
+                    elif 10 < k <= 20:
+                        resource = Resource("Game", "src/resources/Game.png", "Bonus", 1, 1, 0, j)
+                        j.resource = resource
+                        resources_to_draw.append(resource)
+                elif j.biome == Biomes[1]:
+                    if k <= 20:
+                        resource = Resource("Oasis", "src/resources/Oasis.png", "Bonus", 0, 3, 1, j)
+                        j.resource = resource
+                        resources_to_draw.append(resource)
+                elif j.biome == Biomes[4]:
+                    if k <= 10:
+                        resource = Resource("Horses", "src/resources/Horses.png", "Strategic", 1, 2, 0, j)
+                        j.resource = resource
+                        resources_to_draw.append(resource)
+                    elif 10 < k <= 20:
+                        resource = Resource("Ivory", "src/resources/Ivory.png", "Valuable", 1, 1, 3, j)
+                        j.resource = resource
+                        resources_to_draw.append(resource)
+                    elif 20 < k <= 30:
+                        resource = Resource("Wheat", "src/resources/Wheat.png", "Bonus", 0, 1, 0, j)
+                        j.resource = resource
+                        resources_to_draw.append(resource)
+                elif j.biome == Biomes[5]:
+                    if k <= 10:
+                        resource = Resource("Iron", "src/resources/Iron.png", "Strategic", 2, 0, 0, j)
+                        j.resource = resource
+                        resources_to_draw.append(resource)
+                    elif 10 < k <= 20:
+                        resource = Resource("Gems", "src/resources/Gems.png", "Valuable", 2, 0, 3, j)
+                        j.resource = resource
+                        resources_to_draw.append(resource)
+                elif j.biome == Biomes[6]:
+                    if k <= 20:
+                        resource = Resource("Sugar", "src/resources/Sugar.png", "Bonus", 0, 1, 2, j)
+                        j.resource = resource
+                        resources_to_draw.append(resource)
+                elif j.biome == Biomes[7]:
+                    if k <= 10:
+                        resource = Resource("Spice", 'src/resources/Spice.png', "Valuable", 2, 0, 3, j)
+                        j.resource = resource
+                        resources_to_draw.append(resource)
+                elif j.biome == Biomes[8]:
+                    if k <= 10:
+                        resource = Resource("Fish", "src/resources/fish.png", "Bonus", 1, 3, 1, j)
+                        j.resource = resource
+                        resources_to_draw.append(resource)
 
 
 class Team:
@@ -300,11 +353,21 @@ class Unit(pygame.sprite.Sprite):
             screen.blit(unit_screen, (0, screen.get_height() - 200))
 
 
-class Resource:
-    def __init__(self, name, resource_type, rarity):
+class Resource(pygame.sprite.Sprite):
+    def __init__(self, name, image_path, resource_type, production, food, gold, tile):
+        super().__init__()
         self.name = name
         self.type = resource_type
-        self.rarity = rarity
+        self.production = production
+        self.food = food
+        self.gold = gold
+        self.tile = tile
+        image = pygame.image.load(image_path).convert_alpha()
+        image = pygame.transform.scale(image, (45, 45))
+        self.image_original = image.subsurface(image.get_bounding_rect())
+        self.image = self.image_original.copy()
+        self.rect = self.image.get_rect(topleft=tile.pos)
+        self.rect.center = tile.rect.center
 
 
 class Camera:
@@ -514,7 +577,7 @@ while True:
     clock.tick(fps)
 
 # main game
-resource_types = ("Strategic", "Valuable", "Bonus")
+resource_types = ("govno", "z")
 teams = (Team("Danish", [], "src/icons/danish.png"), Team("Dutch", [], "src/icons/dutch.png"),
          Team("English", [], "src/icons/english.png"),
          Team("Indian", [], "src/icons/indian.png"), Team("Japanese", [], "src/icons/japanese.png"),
@@ -525,16 +588,33 @@ Biomes = (Biome("Tundra", 2, 4, "src/biomes/tundra.png"), Biome("Desert", 2, 4, 
           Biome("Plains", 1, 1, "src/biomes/plains.png"), Biome("RollingPlains", 2, 1, "src/biomes/hills.png"),
           Biome("Jungle", 3, 2, "src/biomes/jungle.png"), Biome("Woods", 1, 1, "src/biomes/woods.png"),
           Biome("Sea", 3, 5, "src/biomes/sea.png"))
+'''
+Resources = (Resource("Horses", "src/resource/Horses.png", "Strategic", 0.05, 1, 2, 0, (1, 1)),
+             Resource("Iron", "src/resource/Iron.png", "Strategic", 0.05, 2, 0, 0, (1, 1)),
+             Resource("Flur", "src/resource/Furs.png", "Valuable", 0.05, 1, 1, 3, (1, 1)),
+             Resource("Diamonds", "src/resource/Gems.png", "Valuable", 0.05, 2, 0, 3, (1, 1)),
+             Resource("Ivory", "src/resource/Ivory.png", "Valuable", 0.05, 1, 1, 3, (1, 1)),
+             Resource("Spices", "src/resource/Spice.png", "Valuable", 0.05, 2, 0, 3, (1, 1)),
+             Resource("Oasis", "src/resource/Oasis.png", "Bonus", 0.05, 0, 3, 1, (1, 1)),
+             Resource("Fish", "src/resource/fish.png", "Bonus", 0.05, 1, 3, 1, (1, 1)),
+             Resource("Game", "src/resource/Game.png ", "Bonus", 0.05, 1, 1, 0, (1, 1)),
+             Resource("Пшеница", "src/resource/Wheat.png", "Bonus", 0.05, 0, 1, 0, (1, 1)),
+             Resource("Сахар", "src/resource/Sugar.png", "Bonus", 0.05, 0, 1, 2, (1, 1)))
+'''
 
-game = Game(1, teams, teams[2], (10, 10), screen)
+game = Game(1, teams, teams[2], (30, 30), screen)
 tile_size = 90
+resources_to_draw = []
 game.start_game()
+game.generate_resources()
 settlertest = Settler("settler1", (2, 0), teams[2], 5)
 units_to_draw = [settlertest]
 cities_to_draw = []
 units = pygame.sprite.Group(units_to_draw)
 tiles = pygame.sprite.Group(game.map)
 cities = pygame.sprite.Group(cities_to_draw)
+resourcesss = pygame.sprite.Group()
+resourcesss.add(resources_to_draw)
 
 camera = Camera()
 
@@ -597,13 +677,13 @@ while True:
 
     keys = pygame.key.get_pressed()
     if keys[pygame.K_w]:
-        camera.move(0, 5)
+        camera.move(0, 10)
     if keys[pygame.K_s]:
-        camera.move(0, -5)
+        camera.move(0, -10)
     if keys[pygame.K_a]:
-        camera.move(5, 0)
+        camera.move(10, 0)
     if keys[pygame.K_d]:
-        camera.move(-5, 0)
+        camera.move(-10, 0)
 
     if keys[pygame.K_SPACE] and selected_unit is not None:
         units.update("settle", game)
@@ -613,15 +693,16 @@ while True:
     camera.update(units)
     camera.update(tiles)
     camera.update(cities)
-
+    camera.update(resourcesss)
+    update_window()
     if science_window_open:
         techs.draw(screen)
     else:
         tiles.draw(screen)
+        resourcesss.draw(screen)
         units.draw(screen)
         cities.draw(screen)
     screen.blit(science_icon.image, science_icon.pos)
-    update_window()
 
     if selected_unit is not None:
         selected_unit.open_unit_screen()
