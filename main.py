@@ -32,12 +32,6 @@ def update_window():
         screen.blit(scroll.image, (0, 0))
     if culture_window_open:
         screen.blit(scroll.image, (0, 0))
-    if city_screen_open and selected_city:
-        selected_city.open_city_screen()
-        pygame.display.flip()
-    if unit_screen_open:
-        Unit.open_unit_screen()
-        pygame.display.flip()
 
 
 def close_window():
@@ -45,10 +39,14 @@ def close_window():
     science_window_open = False
     global culture_window_open
     culture_window_open = False
-    global open_city_screen
-    open_city_screen = False
-    global unit_screen_open
-    open_city_screen = False
+    global city_screen_open, selected_city
+    city_screen_open = False
+    selected_city = None
+    global unit_screen_open, selected_unit
+    if unit_screen_open:
+        selected_unit.deselect()
+        selected_unit = None
+        unit_screen_open = False
 
 
 def find_shortest_path(grid, start, goal):
@@ -261,15 +259,17 @@ class Unit(pygame.sprite.Sprite):
 
     def update(self, event, game: Game):
         if type(event) == pygame.event.Event and event.type == pygame.MOUSEBUTTONUP and event.button == 1:
-            global selected_unit
+            global selected_unit, unit_screen_open
             if self.rect.collidepoint(event.pos):
                 if self.team == game.player_team:
                     if selected_unit == self:
                         selected_unit = None
                         self.deselect()
+                        unit_screen_open = False
                     else:
                         selected_unit = self
                         self.select()
+                        unit_screen_open = True
 
     def select(self):
         self.image = self.image_original.copy()
@@ -376,6 +376,15 @@ class City(pygame.sprite.Sprite):
         # Отображаем экран города справа от экрана игры
         screen.blit(self.city_screen, (screen.get_width() - self.city_screen.get_width(), 0))
 
+    def update(self):
+        global city_screen_open, selected_city
+        if selected_city == self:
+            city_screen_open = False
+            selected_city = None
+        else:
+            city_screen_open = True
+            selected_city = self
+
 
 class Archer(Unit):
     def __init__(self, name, pos, team, walk_points):
@@ -419,13 +428,14 @@ class Settler(Unit):
                             self.team, 1, None)
             self.team.cities.append(new_city)
             print(self.team.cities)
-            global units, units_to_draw
+            global units, units_to_draw, unit_screen_open
             global cities_to_draw, cities
             units_to_draw.remove(self)
             units = pygame.sprite.Group(units_to_draw)
             cities_to_draw.append(new_city)
             cities = pygame.sprite.Group(cities_to_draw)
             selected_unit = None
+            unit_screen_open = False
 
 
 class Spearman(Unit):
@@ -577,12 +587,7 @@ while True:
             if selected_unit is not None:
                 tiles.update(event, game)
                 update_window()
-            for city in cities:
-                if city.rect.collidepoint(event.pos):
-                    selected_city = city
-                    city_screen_open = not city_screen_open
-                    update_window()
-                    break
+            cities.update()
             if not MOVING:
                 units.update(event, game)
             if science_window_open:
@@ -602,13 +607,13 @@ while True:
 
     if keys[pygame.K_SPACE] and selected_unit is not None:
         units.update("settle", game)
-    if keys[pygame.K_ESCAPE] and (science_window_open or culture_window_open or open_city_screen or unit_screen_open):
+    if keys[pygame.K_ESCAPE] and (science_window_open or culture_window_open or city_screen_open or unit_screen_open):
         close_window()
 
     camera.update(units)
     camera.update(tiles)
     camera.update(cities)
-    update_window()
+
     if science_window_open:
         techs.draw(screen)
     else:
@@ -616,9 +621,13 @@ while True:
         units.draw(screen)
         cities.draw(screen)
     screen.blit(science_icon.image, science_icon.pos)
+    update_window()
 
     if selected_unit is not None:
         selected_unit.open_unit_screen()
+
+    if selected_city is not None:
+        selected_city.open_city_screen()
 
     MOVING = False
     camera.reset_offset()
