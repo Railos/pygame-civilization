@@ -155,14 +155,14 @@ class Game:
                                                   False)
                             self.resources.append(
                                 Resource(resource_type, resourse[2].image_path, "Valuable", 0.05, Biomes[0], 1,
-                                         1, 3, (x, y)))
+                                         1, 3, (i, j)))
                         else:
                             self.map[i][j] = Tile((j * tile_size, i * tile_size), biome, biome.image_path,
                                                   "Олени",
                                                   False)
                             self.resources.append(
                                 Resource(resource_type, resourse[8].image_path, "Bonus", 0.05, Biomes[0], 1, 1,
-                                         0, (x, y)))
+                                         0, (j, i)))
                     else:
                         self.map[i][j] = Tile((j * tile_size, i * tile_size), biome, biome.image_path,
                                               None,
@@ -177,7 +177,7 @@ class Game:
                         self.resources.append(
                             Resource(resource_type, resourse[7].image_path, "Valuable", 0.05, Biomes[4], 1, 3,
                                      1,
-                                     (x, y)))
+                                     (j, i)))
                     else:
                         self.map[i][j] = Tile((j * tile_size, i * tile_size), biome, biome.image_path,
                                               None,
@@ -194,7 +194,7 @@ class Game:
                     self.resources.append(
                         Resource("Рыба", resourse[7].image_path, "Bonus", 0.05, Biomes[8], 1, 3,
                                  1,
-                                 (x, y)))
+                                 (start_x, start_y)))
                 generate_biome_chunk((start_x, start_y), biome, size_range)
 
         # Шаг 2: Добавление специальных биомов (Mountains, Hills, Swamp)
@@ -392,6 +392,7 @@ class Resource:
         self.production = production
         self.food = food
         self.gold = gold
+        self.image_path = image_path
         image = pygame.image.load(image_path).convert_alpha()
         image = pygame.transform.scale(image, (90, 90))
         self.image_original = image.subsurface(image.get_bounding_rect())
