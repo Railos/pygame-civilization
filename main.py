@@ -7,6 +7,26 @@ import sys
 selected_unit = None
 
 
+class Image:
+    def __init__(self, path_to_image, size, pos=(0, 0)):
+        self.image = pygame.image.load(path_to_image).convert_alpha()
+        self.image = pygame.transform.scale(self.image, size)
+        image_original = self.image.subsurface(self.image.get_bounding_rect())
+        self.image = image_original.copy()
+        self.rect = self.image.get_rect()
+        self.pos = pos
+        self.rect.topleft = pos
+
+    def change_size(self, new_size):
+        self.image = pygame.transform.scale(self.image, new_size)
+        image_original = self.image.subsurface(self.image.get_bounding_rect())
+        self.image = image_original.copy()
+        self.rect = self.image.get_rect()
+
+    def change_pos(self, new_pos):
+        self.rect.topleft = new_pos
+
+
 def update_window():
     if science_window_open:
         screen.blit(scroll.image, (0, 0))
@@ -197,20 +217,22 @@ class Tile(pygame.sprite.Sprite):
         image_or = pygame.image.load(image_path).convert_alpha()
         image_or = pygame.transform.scale(image_or, (180, 180))
         self.image = image_or.subsurface(image_or.get_bounding_rect())
+        self.rect = self.image.get_rect(topleft=pos)
         self.resource = resource
         self.occupied = occupied
-        self.rect = self.image.get_rect(topleft=pos)
 
     def update(self, event, game):
         global selected_unit
-        if self.rect.collidepoint(event.pos):
+        global MOVING
+        if self.rect.collidepoint(event.pos) and (selected_unit.pos[0] * 90, selected_unit.pos[1] * 90) != self.pos:
             pathuwu = find_shortest_path(game.map, selected_unit.pos,
                                          (self.pos[0] / tile_size, self.pos[1] / tile_size))
-            print(pathuwu, selected_unit.walk_points)
             if pathuwu <= selected_unit.walk_points:
                 selected_unit.rect.center = self.rect.center
                 selected_unit.pos = (int(self.pos[0] / tile_size), int(self.pos[1] / tile_size))
                 selected_unit.deselect()
+                selected_unit = None
+                MOVING = True
             else:
                 print("too far")
                 selected_unit.deselect()
@@ -432,40 +454,23 @@ class Worker(Unit):
         super().__init__(image_path="src/units/worker.png", name=name, pos=pos, team=team, walk_points=walk_points)
 
 
-class Image:
-    def __init__(self, path_to_image, size, pos=(0, 0)):
-        self.image = pygame.image.load(path_to_image).convert_alpha()
-        self.image = pygame.transform.scale(self.image, size)
-        image_original = self.image.subsurface(self.image.get_bounding_rect())
-        self.image = image_original.copy()
-        self.rect = self.image.get_rect()
-        self.pos = pos
-        self.rect.topleft = pos
-
-    def change_size(self, new_size):
-        self.image = pygame.transform.scale(self.image, new_size)
-        image_original = self.image.subsurface(self.image.get_bounding_rect())
-        self.image = image_original.copy()
-        self.rect = self.image.get_rect()
-
-    def change_pos(self, new_pos):
-        self.rect.topleft = new_pos
-
-
 class Tech(pygame.sprite.Sprite):
     def __init__(self, image: Image, requirements, unlocked=False):
         super().__init__()
-        self.image = image
+        self.image_class = image
+        self.image = image.image
+        self.rect = image.rect
         self.requirements = requirements
         self.unlocked = unlocked
 
     def update(self, event):
         if type(event) == pygame.event.Event and event.type == pygame.MOUSEBUTTONUP and event.button == 1:
-            for i in self.requirements:
-                if not i.unlocked:
-                    return
-            print("UNLOCKED UWU!!!!!!!!!!!")
-            self.unlocked = True
+            if self.rect.collidepoint(event.pos) and not self.unlocked:
+                for i in self.requirements:
+                    if not i.unlocked:
+                        return
+                print("UNLOCKED UWU!!!!!!!!!!!")
+                self.unlocked = True
 
 
 pygame.init()
@@ -475,6 +480,7 @@ screen = pygame.display.set_mode(window_size)
 fps = 60
 clock = pygame.time.Clock()
 
+# main menu
 start_game = Image("src/icons/start_game.png", (150, 75), (400, 200))
 loading = Image("src/icons/loading.png", (150, 75), (400, 400))
 game_started = False
@@ -497,7 +503,7 @@ while True:
     pygame.display.flip()
     clock.tick(fps)
 
-
+# main game
 resource_types = ("Strategic", "Valuable", "Bonus")
 teams = (Team("Danish", [], "src/icons/danish.png"), Team("Dutch", [], "src/icons/dutch.png"),
          Team("English", [], "src/icons/english.png"),
@@ -510,7 +516,7 @@ Biomes = (Biome("Tundra", 2, 4, "src/biomes/tundra.png"), Biome("Desert", 2, 4, 
           Biome("Jungle", 3, 2, "src/biomes/jungle.png"), Biome("Woods", 1, 1, "src/biomes/woods.png"),
           Biome("Sea", 3, 5, "src/biomes/sea.png"))
 
-game = Game(1, teams, teams[2], (30, 30), screen)
+game = Game(1, teams, teams[2], (10, 10), screen)
 tile_size = 90
 game.start_game()
 settlertest = Settler("settler1", (2, 0), teams[2], 5)
@@ -522,8 +528,34 @@ cities = pygame.sprite.Group(cities_to_draw)
 
 camera = Camera()
 
+bronze_working = Tech(Image("src/icons/bronze_working.png", (50, 50), (100, 80)), [])
+masonry = Tech(Image("src/icons/masonry.png", (50, 50), (100, 140)), [])
+alphabet = Tech(Image("src/icons/alphabet.png", (50, 50), (100, 200)), [])
+pottery = Tech(Image("src/icons/pottery.png", (50, 50), (100, 260)), [])
+wheel = Tech(Image("src/icons/wheel.png", (50, 50), (100, 320)), [])
+warrior_code = Tech(Image("src/icons/warrior_code.png", (50, 50), (100, 380)), [])
+ceremonial_burial = Tech(Image("src/icons/ceremonial_burial.png", (50, 50), (100, 440)), [])
+iron_working = Tech(Image("src/icons/iron_working.png", (50, 50), (200, 80)), [bronze_working])
+mathematics = Tech(Image("src/icons/mathematics.png", (50, 50), (200, 140)), [masonry])
+writing = Tech(Image("src/icons/writing.png", (50, 50), (200, 200)), [alphabet])
+horseback_riding = Tech(Image("src/icons/horseback_riding.png", (50, 50), (200, 350)), [wheel, warrior_code])
+mysticism = Tech(Image("src/icons/mysticism.png", (50, 50), (200, 440)), [ceremonial_burial])
+construction = Tech(Image("src/icons/construction.png", (50, 50), (300, 80)), [iron_working, mathematics])
+currency = Tech(Image("src/icons/currency.png", (50, 50), (300, 140)), [mathematics])
+philosophy = Tech(Image("src/icons/philosophy.png", (50, 50), (300, 200)), [writing])
+code_of_law = Tech(Image("src/icons/code_of_law.png", (50, 50), (300, 260)), [writing])
+literature = Tech(Image("src/icons/literature.png", (50, 50), (300, 320)), [writing])
+map_making = Tech(Image("src/icons/map_making.png", (50, 50), (300, 380)), [writing])
+polytheism = Tech(Image("src/icons/polytheism.png", (50, 50), (300, 440)), [mysticism])
+republic = Tech(Image("src/icons/republic.png", (50, 50), (400, 230)), [philosophy, code_of_law])
+monarchy = Tech(Image("src/icons/monarchy.png", (50, 50), (400, 440)), [polytheism])
+
+techs_to_draw = [bronze_working, masonry, alphabet, pottery, wheel, warrior_code, ceremonial_burial, iron_working,
+                 mathematics, writing, horseback_riding, mysticism, construction, currency, philosophy, code_of_law,
+                 literature, map_making, polytheism, republic, monarchy]
+techs = pygame.sprite.Group(techs_to_draw)
+
 science_icon = Image("src/icons/science_icon.png", (30, 30), (10, 10))
-culture_icon = Image("src/icons/culture.png", (30, 30), (40, 10))
 scroll = Image("src/icons/scroll.png", window_size)
 
 science_window_open = False
@@ -532,7 +564,7 @@ culture_window_open = False
 unit_screen_open = False
 city_screen_open = False
 selected_city = None
-
+MOVING = False
 
 # main loop
 while True:
@@ -551,11 +583,12 @@ while True:
                     city_screen_open = not city_screen_open
                     update_window()
                     break
-            units.update(event, game)
+            if not MOVING:
+                units.update(event, game)
+            if science_window_open:
+                techs.update(event)
             if science_icon.rect.collidepoint(event.pos):
                 science_window_open = not science_window_open
-            if culture_icon.rect.collidepoint(event.pos):
-                culture_window_open = not culture_window_open
 
     keys = pygame.key.get_pressed()
     if keys[pygame.K_w]:
@@ -575,15 +608,19 @@ while True:
     camera.update(units)
     camera.update(tiles)
     camera.update(cities)
-    tiles.draw(screen)
-    units.draw(screen)
-    cities.draw(screen)
-    screen.blit(science_icon.image, science_icon.pos)
-    screen.blit(culture_icon.image, culture_icon.pos)
     update_window()
+    if science_window_open:
+        techs.draw(screen)
+    else:
+        tiles.draw(screen)
+        units.draw(screen)
+        cities.draw(screen)
+    screen.blit(science_icon.image, science_icon.pos)
+
     if selected_unit is not None:
         selected_unit.open_unit_screen()
 
+    MOVING = False
     camera.reset_offset()
     pygame.display.flip()
     clock.tick(fps)
