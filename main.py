@@ -147,19 +147,54 @@ class Game:
                 if (i < tundra_down or i > self.map_size[0] - tundra_up - 1) and not (
                         j < sea_left or j > self.map_size[0] - sea_right - 1):
                     biome = Biomes[0]
-                    self.map[i][j] = Tile((j * tile_size, i * tile_size), biome, biome.image_path,
-                                          random.choice(resource_types),
-                                          False)
+                    if random.random() <= 0.3:
+                        resource_type = random.choice(["Меха", "Олени"])
+                        if resource_type == "Меха":
+                            self.map[i][j] = Tile((j * tile_size, i * tile_size), biome, biome.image_path,
+                                                  "Меха",
+                                                  False)
+                            self.resources.append(
+                                Resource(resource_type, resourse[2].image_path, "Valuable", 0.05, Biomes[0], 1,
+                                         1, 3, (x, y)))
+                        else:
+                            self.map[i][j] = Tile((j * tile_size, i * tile_size), biome, biome.image_path,
+                                                  "Олени",
+                                                  False)
+                            self.resources.append(
+                                Resource(resource_type, resourse[8].image_path, "Bonus", 0.05, Biomes[0], 1, 1,
+                                         0, (x, y)))
+                    else:
+                        self.map[i][j] = Tile((j * tile_size, i * tile_size), biome, biome.image_path,
+                                              None,
+                                              False)
                 elif j < sea_left or j > self.map_size[1] - sea_right - 1:
                     biome = Biomes[8]
-                    self.map[i][j] = Tile((j * tile_size, i * tile_size), biome, biome.image_path,
-                                          random.choice(resource_types),
-                                          False)
+                    if random.random() <= 0.3:
+                        resource_type = "Рыба"
+                        self.map[i][j] = Tile((j * tile_size, i * tile_size), biome, biome.image_path,
+                                              resource_types,
+                                              False)
+                        self.resources.append(
+                            Resource(resource_type, resourse[7].image_path, "Valuable", 0.05, Biomes[4], 1, 3,
+                                     1,
+                                     (x, y)))
+                    else:
+                        self.map[i][j] = Tile((j * tile_size, i * tile_size), biome, biome.image_path,
+                                              None,
+                                              False)
 
         for biome, size_range in biome_distribution.items():
             for _ in range(random.randint(3, 6)):  # Несколько областей каждого биома
                 start_x = random.randint(sea_left, self.map_size[0] - 1 - sea_right)
                 start_y = random.randint(tundra_up, self.map_size[1] - 1 - tundra_down)
+                if random.random() <= 0.3:
+                    self.map[i][j] = Tile((start_x, start_y), biome, biome.image_path,
+                                          "Рыба",
+                                          False)
+                    self.resources.append(
+                        Resource("Рыба", resourse[7].image_path, "Bonus", 0.05, Biomes[8], 1, 3,
+                                 1,
+                                 (x, y)))
                 generate_biome_chunk((start_x, start_y), biome, size_range)
 
         # Шаг 2: Добавление специальных биомов (Mountains, Hills, Swamp)
@@ -168,92 +203,74 @@ class Game:
                 if self.map[y][x] is None:
                     # Добавляем случайный биом
                     zvg = random.choice([Biomes[4], Biomes[7]])
-                    self.map[y][x] = Tile((x * tile_size, y * tile_size), zvg, zvg.image_path, None, False)
+                    if zvg == Biomes[4]:
+                        if random.random() <= 0.3:
+                            resource_type = random.choice(["Лошади", "Пшеница", "Слоновая кость"])
+                            if resource_type == "Лошади":
+                                self.map[y][x] = Tile((x * tile_size, y * tile_size), zvg, zvg.image_path,
+                                                      resource_type, False)
+                                self.resources.append(
+                                    Resource(resource_type, resourse[0].image_path, "Strategic", 0.05, Biomes[4], 1, 3,
+                                             1,
+                                             (x, y)))
+
+                            elif resource_type == "Пшеница":
+                                self.map[y][x] = Tile((x * tile_size, y * tile_size), zvg, zvg.image_path,
+                                                      resource_type, False)
+                                self.resources.append(
+                                    Resource(resource_type, resourse[9].image_path, "Bonus", 0.05, Biomes[4], 1, 3,
+                                             1,
+                                             (x, y)))
+                            else:
+                                self.map[y][x] = Tile((x * tile_size, y * tile_size), zvg, zvg.image_path,
+                                                      resource_type, False)
+                                self.resources.append(
+                                    Resource(resource_type, resourse[4].image_path, "Valuable", 0.05, Biomes[4], 1, 3,
+                                             1,
+                                             (x, y)))
+                    else:
+                        if random.random() <= 0.3:
+                            resource_type = random.choice(["Специи"])
+                            self.map[y][x] = Tile((x * tile_size, y * tile_size), zvg, zvg.image_path,
+                                                  resource_type, False)
+                            self.resources.append(
+                                Resource(resource_type, resourse[5].image_path, "Valuable", 0.05, Biomes[7], 1, 3,
+                                         1,
+                                         (x, y)))
+                        else:
+                            self.map[y][x] = Tile((x * tile_size, y * tile_size), zvg, zvg.image_path,
+                                                  None, False)
 
                 # Генерация гор (mountains) с шансом
                 elif self.map[y][x].biome == Biomes[4] and random.random() < 0.05:
                     self.map[y][x] = Tile((x * tile_size, y * tile_size), Biomes[3], Biomes[3].image_path, None, False)
 
                 elif self.map[y][x].biome == Biomes[4] and random.random() < 0.5:
-                    self.map[y][x] = Tile((x * tile_size, y * tile_size), Biomes[5], Biomes[5].image_path, None, False)
+                    if random.random() <= 0.3:
+                        resource_type = random.choice(["Железо", "Алмазы"])
+                        if resource_type == "Железо":
+                            self.map[y][x] = Tile((x * tile_size, y * tile_size), zvg, zvg.image_path,
+                                                  resource_type, False)
+                            self.resources.append(
+                                Resource(resource_type, resourse[1].image_path, "Strategic", 0.05, Biomes[5], 1, 3,
+                                         1,
+                                         (x, y)))
+                        else:
+                            self.map[y][x] = Tile((x * tile_size, y * tile_size), zvg, zvg.image_path,
+                                                  resource_type, False)
+                            self.resources.append(
+                                Resource(resource_type, resourse[3].image_path, "Valuable", 0.05, Biomes[5], 1, 3,
+                                         1,
+                                         (x, y)))
+                    else:
+                        self.map[y][x] = Tile((x * tile_size, y * tile_size), Biomes[5], Biomes[5].image_path, None,
+                                              False)
+
                     generate_biome_chunk((x, y), Biomes[5], (3, 6))
 
                 # Генерация болот (swamp) вокруг биома "Sea"
                 elif self.map[y][x].biome == Biomes[8] and random.random() < 0.1:
                     generate_biome_chunk((x, y), Biomes[2], (3, 6))  # Генерация болот вокруг моря
-        # Шаг 3
-        def generate_resources(self):
-        # Генерация ресурсов на карте
-            for y in range(self.map_size[1]):
-                for x in range(self.map_size[0]):
-                    tile = self.map[y][x]
-                    if tile:
-                        # Проверяем биом и вероятность появления ресурсов
-                        if self.map[y][x].biome == Biomes[5]:
-                            if random.random() <= 0.3:
-                                resource_type = random.choice(["Железо", "Алмазы"])
-                                if resource_type == "Алмазы":
-                                    self.resources.append(
-                                        Resource(resource_type, resourse[3].image_path, "Valuable", 0.05, Biomes[0], 2,
-                                                 0, 3, (x, y)))
-                                else:
-                                    self.resources.append(
-                                        Resource(resource_type, resourse[1].image_path, "Strategic", 0.05, Biomes[0], 2,
-                                                 0, 0, (x, y)))
-                        elif tile.biome == Biomes[1]:
-                            if random.random() <= 0.3:
-                                resource_type = "Оазис"
-                                self.resources.append(
-                                    Resource(resource_type, resourse[6].image_path, "Bonus", 0.05, Biomes[0], 0, 3, 1,
-                                             (x, y)))
-                        elif tile.biome == Biomes[0]:
-                            if random.random() <= 0.3:
-                                resource_type = random.choice(["Меха", "Олени"])
-                                if resource_type == "Меха":
-                                    self.resources.append(
-                                        Resource(resource_type, resourse[2].image_path, "Valuable", 0.05, Biomes[0], 1,
-                                                 1, 3, (x, y)))
-                                else:
-                                    self.resources.append(
-                                        Resource(resource_type, resourse[8].image_path, "Bonus", 0.05, Biomes[0], 1, 1,
-                                                 0, (x, y)))
-                        elif tile.biome == Biomes[4]:
-                            if random.random() <= 0.3:
-                                resource_type = random.choice(["Лошади", "Пшеница", "Слоновая кость"])
-                                if resource_type == "Лошади":
-                                    self.resources.append(
-                                        Resource(resource_type, resourse[0].image_path, "Strategic", 0.05, Biomes[4], 1,
-                                                 2, 0, (x, y)))
-                                elif resource_type == "Пшеница":
-                                    self.resources.append(
-                                        Resource(resource_type, resourse[9].image_path, "Bonus", 0.05, Biomes[4], 0, 1,
-                                                 0, (x, y)))
-                                else:
-                                    self.resources.append(
-                                        Resource(resource_type, resourse[4].image_path, "Valuable", 0.05, Biomes[4], 1,
-                                                 1, 3, (x, y)))
-                        elif tile.biome == Biomes[6]:
-                            if random.random() <= 0.3:
-                                resource_type = "Сахар"
-                                self.resources.append(
-                                    Resource(resource_type, resourse[10].image_path, "Bonus", 0.05, Biomes[4], 0, 1, 2,
-                                             (x, y)))
-                        elif tile.biome == Biomes[7]:
-                            if random.random() <= 0.3:
-                                resource_type = "Специи"
-                                self.resources.append(
-                                    Resource(resource_type, resourse[5].image_path, "Valuable", 0.05, Biomes[4], 2, 0, 3,
-                                             (x, y)))
-                        elif tile.biome == Biomes[8]:
-                            if random.random() <= 0.3:
-                                resource_type = "Рыба"
-                                self.resources.append(
-                                    Resource(resource_type, resourse[7].image_path, "Valuable", 0.05, Biomes[4], 1, 3, 1,
-                                             (x, y)))
-
-    def render_resources(self):
-        for resource in self.resources:
-            self.resource.render(self.screen)
 
 
 class Team:
@@ -574,8 +591,6 @@ Biomes = (
     Biome("RollingPlains", 2, 1, "src/biomes/hills.png", 2, 1, 0),
     Biome("Jungle", 3, 2, "src/biomes/jungle.png", 1, 2, 0), Biome("Woods", 1, 1, "src/biomes/woods.png", 2, 1, 0),
     Biome("Sea", 3, 5, "src/biomes/sea.png", 0, 1, 1))
-
-game = Game(1, teams, teams[2], (30, 30), screen)
 resourse = (Resource("Лошади", "src/resource/Horses.png", "Стратигический", 0.05, Biomes[4], 1, 2, 0, (1, 1)),
             Resource("Железо", "src/resource/Iron.png", "Стратигический", 0.05, Biomes[5], 2, 0, 0, (1, 1)),
             Resource("Меха", "src/resource/Furs.png", "Редкий", 0.05, Biomes[0], 1, 1, 3, (1, 1)),
@@ -587,6 +602,7 @@ resourse = (Resource("Лошади", "src/resource/Horses.png", "Стратиг�
             Resource("Олени", "src/resource/Game.png ", "Бонысный", 0.05, Biomes[0], 1, 1, 0, (1, 1)),
             Resource("Пшеница", "src/resource/Wheat.png", "Бонусный", 0.05, Biomes[4], 0, 1, 0, (1, 1)),
             Resource("Сахар", "src/resource/Sugar.png", "Бонусный", 0.05, Biomes[6], 0, 1, 2, (1, 1)))
+game = Game(1, teams, teams[2], (30, 30), screen)
 tile_size = 90
 game.start_game()
 settlertest = Settler("settler1", (2, 0), teams[2], 5)
