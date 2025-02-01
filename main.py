@@ -261,7 +261,7 @@ class Biome:
 
 
 class Tile(pygame.sprite.Sprite):
-    def __init__(self, pos, biome, image_path, resource, occupied):
+    def __init__(self, pos, biome, image_path, resource, unit_on_tile=None):
         super().__init__()
         self.pos = pos
         self.biome = biome
@@ -270,29 +270,46 @@ class Tile(pygame.sprite.Sprite):
         self.image = image_or.subsurface(image_or.get_bounding_rect())
         self.rect = self.image.get_rect(topleft=pos)
         self.resource = resource
-        self.occupied = occupied
+        self.unit = None
+        self.city = None
 
     def update(self, event, game):
         global selected_unit
         global MOVING
+
         if self.rect.collidepoint(event.pos) and (selected_unit.pos[0] * 90, selected_unit.pos[1] * 90) != self.pos:
             pathuwu = find_shortest_path(game.map, selected_unit.pos,
                                          (self.pos[0] / tile_size, self.pos[1] / tile_size))
             if pathuwu <= selected_unit.walk_points:
-                selected_unit.rect.center = self.rect.center
-                selected_unit.pos = (int(self.pos[0] / tile_size), int(self.pos[1] / tile_size))
-                selected_unit.deselect()
-                selected_unit = None
-                MOVING = True
+                if self.unit is None:  # Если клетка пуста
+                    selected_unit.rect.center = self.rect.center  # Перемещаем юнита
+                    selected_unit.pos = (
+                        int(self.pos[0] / tile_size), int(self.pos[1] / tile_size))  # Обновляем его позицию
+                    selected_unit.deselect()  # Снимаем выделение с юнита
+                    selected_unit = None
+                    MOVING = True  # Юнит двигается
+                    print("goooooooo")
+                elif self.unit.team == selected_unit.team:  # Если клетка занята своим юнитом
+                    MOVING = False
+                    selected_unit.deselect()  # Снимаем выделение с юнита
+                    selected_unit = None
+
+                    print("Вы не можете переместиться на клетку с вашим юнитом!")
+
+                elif self.unit.team != selected_unit.team:  # Если клетка занята вражеским юнитом
+                    # Если на клетке вражеский юнит, атакуем его
+                    selected_unit.Attack(self.unit)
+                    MOVING = False  # Останавливаем движение
+                    selected_unit.deselect()  # Снимаем выделение с юнита
+                    selected_unit = None
             else:
                 print("too far")
                 selected_unit.deselect()
                 selected_unit = None
 
 
-
 class Unit(pygame.sprite.Sprite):
-    def __init__(self, image_path, name, team, pos, walk_points):
+    def __init__(self, image_path, name, team, pos, walk_points, attack, defense):
         super().__init__()
         self.name = name
         self.team = team
@@ -310,6 +327,8 @@ class Unit(pygame.sprite.Sprite):
         self.name_of_units = self.font.render(f"{self.name}", True, (0, 0, 0))
         self.walk = self.font.render(f"Перемещение:{self.walk_points}", True, (0, 0, 0))
         self.hp = 100
+        self.defense = defense
+        self.attack = attack
 
     def update(self, event, game: Game):
         if type(event) == pygame.event.Event and event.type == pygame.MOUSEBUTTONUP and event.button == 1:
@@ -324,6 +343,46 @@ class Unit(pygame.sprite.Sprite):
                         selected_unit = self
                         self.select()
                         unit_screen_open = True
+
+    def Attack(self, other_unit):
+        """
+        Метод для атаки другого юнита.
+        :param other_unit: Юнит, который будет атакован
+        """
+        if self.team == other_unit.team:
+            print(f"{self.name} не может атаковать {other_unit.name}, так как они из одной команды.")
+            return
+
+        x_diff = abs(self.pos[0] - other_unit.pos[0])
+        y_diff = abs(self.pos[1] - other_unit.pos[1])
+
+        if x_diff > 1 or y_diff > 1:
+            print(f"{self.name} не может атаковать {other_unit.name}, так как они не на соседних клетках.")
+            return
+
+        if other_unit.hp > 0:  # У противника должно быть здоровье
+            # Рассчитываем урон
+            damage = self.attack - other_unit.defense
+            if damage > 0:
+                other_unit.hp -= damage
+                print(f"{self.name} атакует {other_unit.name} и наносит {damage} урона.")
+            else:
+                print(f"{self.name} атакует {other_unit.name}, но не наносит урона.")
+
+                # Проверка на смерть юнита
+            if other_unit.hp <= 0:
+                other_unit.hp = 0
+                print(f"{other_unit.name} погибает.")
+                other_unit.deselect()  # Снимаем выделение с погибшего юнита
+                if other_unit in units_to_draw:
+                    units_to_draw.remove(other_unit)  # Удаляем юнита из игры
+
+            if self.hp <= 0:
+                self.hp = 0
+                print(f"{self.name} погиб в бою")
+                self.deselect()
+                if self in units_to_draw:
+                    units_to_draw.remove(self)
 
     def select(self):
         self.image = self.image_original.copy()
@@ -465,38 +524,45 @@ class Bulding:
 
 
 class Archer(Unit):
-    def __init__(self, name, pos, team, walk_points):
-        super().__init__(image_path="src/units/archer.png", name=name, pos=pos, team=team, walk_points=walk_points)
+    def __init__(self, name, pos, team, walk_points, attack, defense):
+        super().__init__(image_path="src/units/archer.png", name=name, pos=pos, team=team, walk_points=walk_points,
+                         attack=attack, defense=defense)
 
 
 class Catapult(Unit):
-    def __init__(self, name, pos, team, walk_points):
-        super().__init__(image_path="src/units/catapult.png", name=name, pos=pos, team=team, walk_points=walk_points)
+    def __init__(self, name, pos, team, walk_points, attack, defense):
+        super().__init__(image_path="src/units/catapult.png", name=name, pos=pos, team=team, walk_points=walk_points,
+                         attack=attack, defense=defense)
 
 
 class Chariot(Unit):
-    def __init__(self, name, pos, team, walk_points):
-        super().__init__(image_path="src/units/chariot.png", name=name, pos=pos, team=team, walk_points=walk_points)
+    def __init__(self, name, pos, team, walk_points, attack, defense):
+        super().__init__(image_path="src/units/chariot.png", name=name, pos=pos, team=team, walk_points=walk_points,
+                         attack=attack, defense=defense)
 
 
 class Galley(Unit):
-    def __init__(self, name, pos, team, walk_points):
-        super().__init__(image_path="src/units/galley.png", name=name, pos=pos, team=team, walk_points=walk_points)
+    def __init__(self, name, pos, team, walk_points, attack, defense):
+        super().__init__(image_path="src/units/galley.png", name=name, pos=pos, team=team, walk_points=walk_points,
+                         attack=attack, defense=defense)
 
 
 class Horseman(Unit):
-    def __init__(self, name, pos, team, walk_points):
-        super().__init__(image_path="src/units/horseman.png", name=name, pos=pos, team=team, walk_points=walk_points)
+    def __init__(self, name, pos, team, walk_points, attack, defense):
+        super().__init__(image_path="src/units/horseman.png", name=name, pos=pos, team=team, walk_points=walk_points,
+                         attack=attack, defense=defense)
 
 
 class Scout(Unit):
-    def __init__(self, name, pos, team, walk_points):
-        super().__init__(image_path="src/units/scout.png", name=name, pos=pos, team=team, walk_points=walk_points)
+    def __init__(self, name, pos, team, walk_points, attack, defense):
+        super().__init__(image_path="src/units/scout.png", name=name, pos=pos, team=team, walk_points=walk_points,
+                         attack=attack, defense=defense)
 
 
 class Settler(Unit):
-    def __init__(self, name, pos, team, walk_points):
-        super().__init__(image_path="src/units/settler.png", name=name, pos=pos, team=team, walk_points=walk_points)
+    def __init__(self, name, pos, team, walk_points, attack, defense):
+        super().__init__(image_path="src/units/settler.png", name=name, pos=pos, team=team, walk_points=walk_points,
+                         attack=attack, defense=defense)
 
     def update(self, event, game):
         super().update(event, game)
@@ -517,29 +583,33 @@ class Settler(Unit):
 
 
 class Spearman(Unit):
-    def __init__(self, name, pos, team, walk_points):
-        super().__init__(image_path="src/units/spearman.png", name=name, pos=pos, team=team, walk_points=walk_points)
+    def __init__(self, name, pos, team, walk_points, attack, defense):
+        super().__init__(image_path="src/units/spearman.png", name=name, pos=pos, team=team, walk_points=walk_points,
+                         attack=attack, defense=defense)
 
 
 class Swordsman(Unit):
-    def __init__(self, name, pos, team, walk_points):
+    def __init__(self, name, pos, team, walk_points, attack, defense):
         super().__init__(image_path="src/units/swordsman.png.png", name=name, pos=pos, team=team,
-                         walk_points=walk_points)
+                         walk_points=walk_points, attack=attack, defense=defense)
 
 
 class Trireme(Unit):
-    def __init__(self, name, pos, team, walk_points):
-        super().__init__(image_path="src/units/trireme.png", name=name, pos=pos, team=team, walk_points=walk_points)
+    def __init__(self, name, pos, team, walk_points, attack, defense):
+        super().__init__(image_path="src/units/trireme.png", name=name, pos=pos, team=team, walk_points=walk_points,
+                         attack=attack, defense=defense)
 
 
 class Warrior(Unit):
-    def __init__(self, name, pos, team, walk_points):
-        super().__init__(image_path="src/units/warrior.png", name=name, pos=pos, team=team, walk_points=walk_points)
+    def __init__(self, name, pos, team, walk_points, attack, defense):
+        super().__init__(image_path="src/units/warrior.png", name=name, pos=pos, team=team, walk_points=walk_points,
+                         attack=attack, defense=defense)
 
 
 class Worker(Unit):
     def __init__(self, name, pos, team, walk_points):
-        super().__init__(image_path="src/units/worker.png", name=name, pos=pos, team=team, walk_points=walk_points)
+        super().__init__(image_path="src/units/worker.png", name=name, pos=pos, team=team, walk_points=walk_points,
+                         attack=attack, defense=defense)
 
 
 class Tech(pygame.sprite.Sprite):
@@ -578,6 +648,7 @@ while True:
     for event in events:
         if event.type == pygame.QUIT:
             pygame.quit()
+            sys.exit(0)
         if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
             if start_game.rect.collidepoint(event.pos):
                 game_started = True
@@ -633,8 +704,10 @@ Resources = (Resource("Horses", "src/resource/Horses.png", "Strategic", 0.05, 1,
 resources_to_draw = []
 game.start_game()
 game.generate_resources()
-settlertest = Settler("settler1", (2, 0), teams[2], 5)
-units_to_draw = [settlertest]
+settlertest = Settler("settler1", (2, 0), teams[2], 5, 0, 0)
+spearmantest1 = Spearman("Spearman_self", (3, 0), teams[2], 5, 20, 30)
+spearmantest2 = Spearman("Spearman_other", (5, 5), teams[3], 5, 20, 30)
+units_to_draw = [settlertest, spearmantest1, spearmantest2]
 cities_to_draw = []
 units = pygame.sprite.Group(units_to_draw)
 tiles = pygame.sprite.Group(game.map)
@@ -689,6 +762,7 @@ while True:
     for event in events:
         if event.type == pygame.QUIT:
             pygame.quit()
+            sys.exit(0)
         if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
             if selected_unit is not None:
                 tiles.update(event, game)
