@@ -5,6 +5,7 @@ import pygame
 import sys
 
 selected_unit = None
+walk_points_max = 5
 
 
 class Image:
@@ -287,6 +288,7 @@ class Tile(pygame.sprite.Sprite):
                     selected_unit.rect.center = self.rect.center  # Перемещаем юнита
                     selected_unit.pos = (
                         int(self.pos[0] / tile_size), int(self.pos[1] / tile_size))  # Обновляем его позицию
+                    selected_unit.walk_points -= pathuwu
                     selected_unit.deselect()  # Снимаем выделение с юнита
                     selected_unit = None
                     MOVING = True  # Юнит двигается
@@ -352,45 +354,49 @@ class Unit(pygame.sprite.Sprite):
         Метод для атаки другого юнита.
         :param other_unit: Юнит, который будет атакован
         """
-        if self.team == other_unit.team:
-            print(f"{self.name} не может атаковать {other_unit.name}, так как они из одной команды.")
-            return
-        global units, units_to_draw
-        x_diff = abs(self.pos[0] - other_unit.pos[0])
-        y_diff = abs(self.pos[1] - other_unit.pos[1])
+        if self.walk_points > 0:
+            if self.team == other_unit.team:
+                print(f"{self.name} не может атаковать {other_unit.name}, так как они из одной команды.")
+                return
+            global units, units_to_draw
+            x_diff = abs(self.pos[0] - other_unit.pos[0])
+            y_diff = abs(self.pos[1] - other_unit.pos[1])
 
-        if x_diff > 1 or y_diff > 1:
-            print(f"{self.name} не может атаковать {other_unit.name}, так как они не на соседних клетках.")
-            return
+            if x_diff > 1 or y_diff > 1:
+                print(f"{self.name} не может атаковать {other_unit.name}, так как они не на соседних клетках.")
+                return
 
-        if other_unit.hp > 0:  # У противника должно быть здоровье
-            # Рассчитываем урон
-            damage = self.attack - other_unit.defense
-            if damage > 0:
-                other_unit.hp -= damage
-                self.hp -= (damage / 2)
-                print(f"{self.name} атакует {other_unit.name} и наносит {damage} урона.")
-            else:
-                print(f"{self.name} атакует {other_unit.name}, но не наносит урона.")
+            if other_unit.hp > 0:  # У противника должно быть здоровье
+                # Рассчитываем урон
+                damage = self.attack - other_unit.defense
+                if damage > 0:
+                    other_unit.hp -= damage
+                    self.hp -= (damage / 2)
+                    print(f"{self.name} атакует {other_unit.name} и наносит {damage} урона.")
+                else:
+                    print(f"{self.name} атакует {other_unit.name}, но не наносит урона.")
 
-                # Проверка на смерть юнита
-            if other_unit.hp <= 0:
-                other_unit.hp = 0
-                print(f"{other_unit.name} погибает.")
-                units_to_draw.remove(other_unit)  # Удаляем юнита из игры
-                units = pygame.sprite.Group(units_to_draw)
-                selected_unit = None
-                game.map[other_unit.pos[0]][other_unit.pos[1]].unit = None
-
-            if self.hp <= 0:
-                self.hp = 0
-                print(f"{self.name} погиб в бою")
-                self.deselect()
-                if self in units_to_draw:
-                    units_to_draw.remove(self)
+                    # Проверка на смерть юнита
+                if other_unit.hp <= 0:
+                    other_unit.hp = 0
+                    print(f"{other_unit.name} погибает.")
+                    units_to_draw.remove(other_unit)  # Удаляем юнита из игры
                     units = pygame.sprite.Group(units_to_draw)
                     selected_unit = None
-                    game.map[self.pos[0]][self.pos[1]].unit = None
+                    game.map[other_unit.pos[0]][other_unit.pos[1]].unit = None
+
+                if self.hp <= 0:
+                    self.hp = 0
+                    print(f"{self.name} погиб в бою")
+                    self.deselect()
+                    if self in units_to_draw:
+                        units_to_draw.remove(self)
+                        units = pygame.sprite.Group(units_to_draw)
+                        selected_unit = None
+                        game.map[self.pos[0]][self.pos[1]].unit = None
+            self.walk_points = 0
+        else:
+            print(f"Недостаточно очков перемещения")
 
     def select(self):
         self.image = self.image_original.copy()
@@ -639,6 +645,16 @@ class Tech(pygame.sprite.Sprite):
                 self.unlocked = True
 
 
+def reset():
+    for i in units_to_draw:
+        if i.walk_points != 0:
+            if i.hp + 5 < 100:
+                i.hp += 5
+            else:
+                i.hp += (100 - i.hp)
+        i.walk_points = walk_points_max
+
+
 pygame.init()
 window_size = (800, 600)
 screen = pygame.display.set_mode(window_size)
@@ -754,6 +770,7 @@ techs = pygame.sprite.Group(techs_to_draw)
 
 science_icon = Image("src/icons/science_icon.png", (30, 30), (10, 10))
 scroll = Image("src/icons/scroll.png", window_size)
+next_turn_icon = Image("src/icons/next turn.png", (400, 400), (650, 500))
 
 science_window_open = False
 culture_window_open = False
@@ -782,6 +799,8 @@ while True:
                 techs.update(event)
             if science_icon.rect.collidepoint(event.pos):
                 science_window_open = not science_window_open
+            if next_turn_icon.rect.collidepoint(event.pos):
+                reset()
 
     keys = pygame.key.get_pressed()
     if keys[pygame.K_w]:
@@ -810,14 +829,14 @@ while True:
         resourcesss.draw(screen)
         units.draw(screen)
         cities.draw(screen)
-    screen.blit(science_icon.image, science_icon.pos)
+    screen.blit(next_turn_icon.image, next_turn_icon.pos)
 
     if selected_unit is not None:
         selected_unit.open_unit_screen()
 
     if selected_city is not None:
         selected_city.open_city_screen()
-
+    screen.blit(next_turn_icon.image, next_turn_icon.pos)
     MOVING = False
     camera.reset_offset()
     pygame.display.flip()
