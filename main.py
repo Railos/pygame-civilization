@@ -304,6 +304,7 @@ class Tile(pygame.sprite.Sprite):
                     MOVING = False  # Останавливаем движение
                     selected_unit.deselect()  # Снимаем выделение с юнита
                     selected_unit = None
+                    print("ffff")
             else:
                 print("too far")
                 selected_unit.deselect()
@@ -367,7 +368,7 @@ class Unit(pygame.sprite.Sprite):
             damage = self.attack - other_unit.defense
             if damage > 0:
                 other_unit.hp -= damage
-                self.hp -= (damage/2)
+                self.hp -= (damage / 2)
                 print(f"{self.name} атакует {other_unit.name} и наносит {damage} урона.")
             else:
                 print(f"{self.name} атакует {other_unit.name}, но не наносит урона.")
@@ -376,14 +377,10 @@ class Unit(pygame.sprite.Sprite):
             if other_unit.hp <= 0:
                 other_unit.hp = 0
                 print(f"{other_unit.name} погибает.")
-                other_unit.deselect()  # Снимаем выделение с погибшего юнита
-                if other_unit in units_to_draw:
-
-                    units_to_draw.remove(other_unit)  # Удаляем юнита из игры
-                    units = pygame.sprite.Group(units_to_draw)
-                    selected_unit = None
-                    game.map[other_unit.pos[0]][other_unit.pos[1]].unit_on_tile = None
-
+                units_to_draw.remove(other_unit)  # Удаляем юнита из игры
+                units = pygame.sprite.Group(units_to_draw)
+                selected_unit = None
+                game.map[other_unit.pos[0]][other_unit.pos[1]].unit = None
 
             if self.hp <= 0:
                 self.hp = 0
@@ -393,7 +390,7 @@ class Unit(pygame.sprite.Sprite):
                     units_to_draw.remove(self)
                     units = pygame.sprite.Group(units_to_draw)
                     selected_unit = None
-                    game.map[self.pos[0]][self.pos[1]].unit_on_tile = None
+                    game.map[self.pos[0]][self.pos[1]].unit = None
 
     def select(self):
         self.image = self.image_original.copy()
