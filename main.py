@@ -276,11 +276,13 @@ class Tile(pygame.sprite.Sprite):
     def update(self, event, game):
         global selected_unit
         global MOVING
-
         if self.rect.collidepoint(event.pos) and (selected_unit.pos[0] * 90, selected_unit.pos[1] * 90) != self.pos:
             pathuwu = find_shortest_path(game.map, selected_unit.pos,
                                          (self.pos[0] / tile_size, self.pos[1] / tile_size))
             if pathuwu <= selected_unit.walk_points:
+                for i in range(len(units_to_draw)):
+                    if units_to_draw[i].pos == (self.pos[0] / tile_size, self.pos[1] / tile_size):
+                        self.unit = units_to_draw[i]
                 if self.unit is None:  # Если клетка пуста
                     selected_unit.rect.center = self.rect.center  # Перемещаем юнита
                     selected_unit.pos = (
@@ -352,7 +354,7 @@ class Unit(pygame.sprite.Sprite):
         if self.team == other_unit.team:
             print(f"{self.name} не может атаковать {other_unit.name}, так как они из одной команды.")
             return
-
+        global units, units_to_draw
         x_diff = abs(self.pos[0] - other_unit.pos[0])
         y_diff = abs(self.pos[1] - other_unit.pos[1])
 
@@ -365,6 +367,7 @@ class Unit(pygame.sprite.Sprite):
             damage = self.attack - other_unit.defense
             if damage > 0:
                 other_unit.hp -= damage
+                self.hp -= (damage/2)
                 print(f"{self.name} атакует {other_unit.name} и наносит {damage} урона.")
             else:
                 print(f"{self.name} атакует {other_unit.name}, но не наносит урона.")
@@ -375,7 +378,12 @@ class Unit(pygame.sprite.Sprite):
                 print(f"{other_unit.name} погибает.")
                 other_unit.deselect()  # Снимаем выделение с погибшего юнита
                 if other_unit in units_to_draw:
+
                     units_to_draw.remove(other_unit)  # Удаляем юнита из игры
+                    units = pygame.sprite.Group(units_to_draw)
+                    selected_unit = None
+                    game.map[other_unit.pos[0]][other_unit.pos[1]].unit_on_tile = None
+
 
             if self.hp <= 0:
                 self.hp = 0
@@ -383,6 +391,9 @@ class Unit(pygame.sprite.Sprite):
                 self.deselect()
                 if self in units_to_draw:
                     units_to_draw.remove(self)
+                    units = pygame.sprite.Group(units_to_draw)
+                    selected_unit = None
+                    game.map[self.pos[0]][self.pos[1]].unit_on_tile = None
 
     def select(self):
         self.image = self.image_original.copy()
@@ -705,8 +716,8 @@ resources_to_draw = []
 game.start_game()
 game.generate_resources()
 settlertest = Settler("settler1", (2, 0), teams[2], 5, 0, 0)
-spearmantest1 = Spearman("Spearman_self", (3, 0), teams[2], 5, 20, 30)
-spearmantest2 = Spearman("Spearman_other", (5, 5), teams[3], 5, 20, 30)
+spearmantest1 = Spearman("Spearman_self", (3, 0), teams[2], 5, 40, 10)
+spearmantest2 = Spearman("Spearman_other", (5, 5), teams[3], 5, 40, 10)
 units_to_draw = [settlertest, spearmantest1, spearmantest2]
 cities_to_draw = []
 units = pygame.sprite.Group(units_to_draw)
