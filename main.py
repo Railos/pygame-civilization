@@ -3,7 +3,8 @@ from collections import deque
 
 import pygame
 import sys
-
+global science_to_unlock
+science_to_unlock = 50
 selected_unit = None
 walk_points_max = 5
 class Image:
@@ -625,20 +626,26 @@ class Worker(Unit):
 
 
 class Tech(pygame.sprite.Sprite):
-    def __init__(self, image: Image, requirements, unlocked=False):
+    def __init__(self, image: Image, requirements,  unlocked=False):
         super().__init__()
         self.image_class = image
         self.image = image.image
         self.rect = image.rect
         self.requirements = requirements
         self.unlocked = unlocked
+        self.f = False
 
     def update(self, event):
+        global science_to_unlock
+        if science_to_unlock >= 50:
+            self.f = True
         if type(event) == pygame.event.Event and event.type == pygame.MOUSEBUTTONUP and event.button == 1:
-            if self.rect.collidepoint(event.pos) and not self.unlocked:
+            if self.rect.collidepoint(event.pos) and not self.unlocked and self.f:
                 for i in self.requirements:
                     if not i.unlocked:
                         return
+                self.f = False
+                science_to_unlock = 0
                 print("UNLOCKED UWU!!!!!!!!!!!")
                 self.unlocked = True
 
@@ -759,7 +766,7 @@ iron_working = Tech(Image("src/icons/iron_working.png", (50, 50), (200, 80)), [b
 mathematics = Tech(Image("src/icons/mathematics.png", (50, 50), (200, 140)), [masonry])
 writing = Tech(Image("src/icons/writing.png", (50, 50), (200, 200)), [alphabet])
 horseback_riding = Tech(Image("src/icons/horseback_riding.png", (50, 50), (200, 350)), [wheel, warrior_code])
-mysticism = Tech(Image("src/icons/mysticism.png", (50, 50), (200, 440)), [ceremonial_burial])
+mysticism = Tech(Image("src/icons/mysticism.png", (50, 50), (200, 440)), [ceremonial_burial], 35)
 construction = Tech(Image("src/icons/construction.png", (50, 50), (300, 80)), [iron_working, mathematics])
 currency = Tech(Image("src/icons/currency.png", (50, 50), (300, 140)), [mathematics])
 philosophy = Tech(Image("src/icons/philosophy.png", (50, 50), (300, 200)), [writing])
@@ -767,7 +774,7 @@ code_of_law = Tech(Image("src/icons/code_of_law.png", (50, 50), (300, 260)), [wr
 literature = Tech(Image("src/icons/literature.png", (50, 50), (300, 320)), [writing])
 map_making = Tech(Image("src/icons/map_making.png", (50, 50), (300, 380)), [writing])
 polytheism = Tech(Image("src/icons/polytheism.png", (50, 50), (300, 440)), [mysticism])
-republic = Tech(Image("src/icons/republic.png", (50, 50), (400, 230)), [philosophy, code_of_law])
+republic = Tech(Image("src/icons/republic.png", (50, 50), (400, 230)), [philosophy, code_of_law],)
 monarchy = Tech(Image("src/icons/monarchy.png", (50, 50), (400, 440)), [polytheism])
 
 techs_to_draw = [bronze_working, masonry, alphabet, pottery, wheel, warrior_code, ceremonial_burial, iron_working,
@@ -778,6 +785,7 @@ techs = pygame.sprite.Group(techs_to_draw)
 science_icon = Image("src/icons/science_icon.png", (30, 30), (10, 10))
 scroll = Image("src/icons/scroll.png", window_size)
 next_turn_icon = Image("src/icons/next turn.png", (400, 400), (650, 500))
+open_tech_text = Image("src/icons/You can open tech.png", (200, 100), (400, 5))
 
 science_window_open = False
 culture_window_open = False
@@ -831,18 +839,21 @@ while True:
     update_window()
     if science_window_open:
         techs.draw(screen)
+        if science_to_unlock >= 50:
+            screen.blit(open_tech_text.image, open_tech_text.pos)
+
     else:
         tiles.draw(screen)
         resourcesss.draw(screen)
         units.draw(screen)
         cities.draw(screen)
-    screen.blit(next_turn_icon.image, next_turn_icon.pos)
 
     if selected_unit is not None:
         selected_unit.open_unit_screen()
 
     if selected_city is not None:
         selected_city.open_city_screen()
+    screen.blit(science_icon.image, science_icon.pos)
     screen.blit(next_turn_icon.image, next_turn_icon.pos)
     MOVING = False
     camera.reset_offset()
