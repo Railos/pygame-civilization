@@ -6,8 +6,6 @@ import sys
 
 selected_unit = None
 walk_points_max = 5
-
-
 class Image:
     def __init__(self, path_to_image, size, pos=(0, 0)):
         self.image = pygame.image.load(path_to_image).convert_alpha()
@@ -645,7 +643,7 @@ class Tech(pygame.sprite.Sprite):
                 self.unlocked = True
 
 
-def reset():
+def Next_turn():
     for i in units_to_draw:
         if i.walk_points != 0:
             if i.hp + 5 < 100:
@@ -653,6 +651,15 @@ def reset():
             else:
                 i.hp += (100 - i.hp)
         i.walk_points = walk_points_max
+    for i in range(len(teams)):
+        if game.player_team == teams[i]:
+            if len(teams) > i + 1:
+                game.player_team = teams[i + 1]
+                return
+            else:
+                game.player_team = teams[0]
+                return
+
 
 
 pygame.init()
@@ -800,7 +807,7 @@ while True:
             if science_icon.rect.collidepoint(event.pos):
                 science_window_open = not science_window_open
             if next_turn_icon.rect.collidepoint(event.pos):
-                reset()
+                Next_turn()
 
     keys = pygame.key.get_pressed()
     if keys[pygame.K_w]:
