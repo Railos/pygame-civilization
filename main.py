@@ -973,7 +973,7 @@ techs = pygame.sprite.Group(techs_to_draw)
 
 science_icon = Image("src/icons/science_icon.png", (30, 30), (10, 10))
 scroll = Image("src/icons/scroll.png", window_size)
-next_turn_icon = Image("src/icons/next_turn.png", (400, 400), (650, 500))
+next_turn_icon = Image("src/icons/next_turn.png", (200, 200), (630, 450))
 
 science_window_open = False
 culture_window_open = False
@@ -982,9 +982,11 @@ unit_screen_open = False
 city_screen_open = False
 selected_city = None
 MOVING = False
-
+pygame.font.init()
+my_font = pygame.font.SysFont('Comic Sans MS', 30)
 # main loop
 while True:
+    text_surface = my_font.render(f"{game.player_team.name}", False, (0, 0, 0))
     events = pygame.event.get()
     screen.fill((0, 0, 0))
     for event in events:
@@ -1045,6 +1047,7 @@ while True:
 
     if selected_unit is None and selected_city is None and not science_window_open:
         screen.blit(next_turn_icon.image, next_turn_icon.pos)
+        screen.blit(text_surface, (next_turn_icon.pos[0] + 40,next_turn_icon.pos[1] - 20))
     MOVING = False
     camera.reset_offset()
     pygame.display.flip()
