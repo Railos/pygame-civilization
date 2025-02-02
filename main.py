@@ -146,6 +146,7 @@ class Game:
         # self.player_team = random.choice(self.teams)
 
     def next_turn(self):
+        global science_to_unlock, teams
         for i in units_to_draw:
             if i.cur_walk_points != 0:
                 if i.hp + 5 < 100:
@@ -153,15 +154,18 @@ class Game:
                 else:
                     i.hp += (100 - i.hp)
             i.cur_walk_points = i.walk_points
+        print(teams)
         for i in range(len(teams)):
-            if self.player_team == teams[i]:
-                if len(teams) > i + 1:
-                    self.player_team = teams[i + 1]
-                else:
-                    self.player_team = teams[0]
+            if self.player_team.name == teams[i].name:
+                z = (i + 1) % len(teams)
+                self.player_team = teams[z]
+                break
+        print(self.player_team.name)
         for i in cities:
             if i.in_progress is not None:
                 i.in_progress = (i.in_progress[0], i.in_progress[1] - 1)
+            i.left_to_grow -= 1
+            science_to_unlock += i.science
 
     def generate_map(self):
 
@@ -384,6 +388,7 @@ class Unit(pygame.sprite.Sprite):
         self.walk = self.font.render(f"Перемещение: {self.unit_walk_points}", True, (0, 0, 0))
         self.unit_hp = 100
         self.hp_text = self.font.render(f"Здоровье: {self.unit_hp}", True, (0, 0, 0))
+        self.team_text = self.font.render(f'Команда: {self.team.name if self.team is not None else "Нет"}', True, (0, 0, 0))
         self.defense = defense
         self.attack = attack
 
@@ -409,6 +414,8 @@ class Unit(pygame.sprite.Sprite):
         if type(event) == pygame.event.Event and event.type == pygame.MOUSEBUTTONUP and event.button == 1:
             global selected_unit, unit_screen_open
             if self.rect.collidepoint(event.pos):
+                if selected_unit is not None:
+                    selected_unit.deselect()
                 if selected_unit == self:
                     selected_unit = None
                     self.deselect()
@@ -491,10 +498,11 @@ class Unit(pygame.sprite.Sprite):
             # Размещение текста
             unit_screen.blit(name_text, (10, 10))
             unit_screen.blit(self.walk, (10, 40))
-            unit_screen.blit(self.hp_text, (300, 30))
+            unit_screen.blit(self.hp_text, (300, 10))
+            unit_screen.blit(self.team_text, (300, 40))
 
             # Отображаем окно на экране
-            screen.blit(unit_screen, (0, screen.get_height() - 200))
+            screen.blit(unit_screen, (0, screen.get_height() - 100))
 
 
 class Resource(pygame.sprite.Sprite):
@@ -558,8 +566,6 @@ class City(pygame.sprite.Sprite):
         self.uniting = False
         self.progress = None
         self.queue = []
-        self.grow = 10
-        self.left_to_grow = 10
 
         self.neighbours = []
         for r in range(pos[0] - 1, pos[0] + 2):
@@ -585,12 +591,17 @@ class City(pygame.sprite.Sprite):
             self._production += cur.biome.production
             self._food += cur.biome.food
 
+        self.food_to_grow = self.population * 15
+        self.grow = math.ceil(self.food_to_grow / self._food)
+        self._left_to_grow = self.grow
+        self.science = 1
+
         self.font = pygame.font.SysFont("Arial", 20)
         self.city_screen = pygame.Surface((250, 600))
         self.gold_income_text = self.font.render(f"Золото за ход: {self._gold_income}", True, (0, 0, 0))
         self.production_per_turn_text = self.font.render(f"Производство: {self._production}", True, (0, 0, 0))
         self.food_text = self.font.render(f"Пищи за ход: {self._food}", True, (0, 0, 0))
-        self.turn_to_grow_text = self.font.render(f"Ходов до роста: {self.left_to_grow}", True, (0, 0, 0))
+        self.turn_to_grow_text = self.font.render(f"Ходов до роста: {self._left_to_grow}", True, (0, 0, 0))
         self.buildings_text = self.font.render(f"Построенные здания:", True, (0, 0, 0))
 
         self.population_text = self.font.render(f"Население: {self.population}", True, (0, 0, 0))
@@ -611,6 +622,7 @@ class City(pygame.sprite.Sprite):
                 self.production += self.progress[0].production_give
                 self.food += self.progress[0].food_give
                 self.gold_income += self.progress[0].gold_give
+                self.science += self.progress[0].science_give
             else:
                 global units
                 for i in self.neighbours:
@@ -648,6 +660,21 @@ class City(pygame.sprite.Sprite):
     def gold_income(self, new_value):
         self._gold_income = new_value
         self.gold_income_text = self.font.render(f"Золото за ход: {self._gold_income}", True, (0, 0, 0))
+
+    @property
+    def left_to_grow(self):
+        return self._left_to_grow
+
+    @left_to_grow.setter
+    def left_to_grow(self, new_value):
+        self._left_to_grow = new_value
+        if self._left_to_grow <= 0:
+            self.population += 1
+            self.population_text = self.font.render(f"Население: {self.population}", True, (0, 0, 0))
+            self.food_to_grow = self.population * 15
+            self.grow = math.ceil(self.food_to_grow / self._food)
+            self._left_to_grow = self.grow
+        self.turn_to_grow_text = self.font.render(f"Ходов до роста: {self._left_to_grow}", True, (0, 0, 0))
 
     def open_city_screen(self):
         global buildings_to_draw
@@ -862,21 +889,18 @@ class Tech(pygame.sprite.Sprite):
         self.rect = image.rect
         self.requirements = requirements
         self.unlocked = unlocked
-        self.f = False
 
     def update(self, event):
         global science_to_unlock
-        if science_to_unlock >= 50:
-            self.f = True
         if type(event) == pygame.event.Event and event.type == pygame.MOUSEBUTTONUP and event.button == 1:
-            if self.rect.collidepoint(event.pos) and not self.unlocked:
+            if self.rect.collidepoint(event.pos) and not self.unlocked and science_to_unlock >= 50:
                 for i in self.requirements:
                     if not i.unlocked:
                         return
-                self.f = False
                 science_to_unlock = 0
                 print("UNLOCKED UWU!!!!!!!!!!!")
                 self.unlocked = True
+                self.image.fill((0, 0, 0, 100), special_flags=pygame.BLEND_RGBA_MULT)
 
 
 pygame.init()
@@ -981,7 +1005,7 @@ Resources = (Resource("Horses", "src/resource/Horses.png", "Strategic", 0.05, 1,
              Resource("Сахар", "src/resource/Sugar.png", "Bonus", 0.05, 0, 1, 2, (1, 1)))
 '''
 
-game = Game(1, teams, teams[0], (10, 10), screen)
+game = Game(1, teams, None, (30, 30), screen)
 tile_size = 90
 buildings = [Building("Акведук", "src/building/aqueduct.png", 70, 1, 3, 0, 0),
              Building("Колизей", "src/building/Colosseum.png", 70, 0, 0, 3, 1),
@@ -998,8 +1022,7 @@ buildings = [Building("Акведук", "src/building/aqueduct.png", 70, 1, 3, 0
 resources_to_draw = []
 game.start_game()
 game.generate_resources()
-settler1 = Settler((2, 0), teams[0])
-units_to_draw = [settler1]
+units_to_draw = []
 cities_to_draw = []
 units = pygame.sprite.Group(units_to_draw)
 tiles = pygame.sprite.Group(game.map)
@@ -1074,6 +1097,18 @@ selected_city = None
 MOVING = False
 pygame.font.init()
 my_font = pygame.font.SysFont('Comic Sans MS', 30)
+game.player_team = teams[0]
+for z in teams:
+    i = random.randint(0, len(game.map) - 1)
+    j = random.randint(0, len(game.map[i]) - 1)
+    while game.map[i][j].biome.name == "Sea" or game.map[i][j].unit is not None:
+        i = random.randint(0, len(game.map) - 1)
+        j = random.randint(0, len(game.map[i]) - 1)
+    s = Settler((j, i), z)
+    units_to_draw.append(s)
+    units.add(s)
+    game.map[i][j].unit = units_to_draw[len(units_to_draw) - 1]
+
 
 # main loop
 while True:
@@ -1132,7 +1167,8 @@ while True:
     if science_window_open:
         techs.draw(screen)
         if science_to_unlock >= 50:
-            screen.blit(open_tech_text.image, open_tech_text.pos)
+            text_surface = my_font.render(f"Вы можете открыть новую технологию", False, (255, 255, 255))
+            screen.blit(text_surface, (200, 30))
     else:
         tiles.draw(screen)
         resourcesss.draw(screen)
