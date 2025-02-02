@@ -367,6 +367,7 @@ class Unit(pygame.sprite.Sprite):
         super().__init__()
         self.name = name
         self.team = team
+        self.image_path = image_path
         image = pygame.image.load(image_path).convert_alpha()
         image = pygame.transform.scale(image, (150, 150))
         self.image_original = image.subsurface(image.get_bounding_rect())
@@ -566,7 +567,11 @@ class City(pygame.sprite.Sprite):
                 if r == pos[0] and c == pos[1]:
                     continue
                 if 0 <= r < len(game.map) and 0 <= c < len(game.map[0]):
-                    self.neighbours.append((r, c))
+                    for i in cities:
+                        if i.pos == (r, c):
+                            break
+                    else:
+                        self.neighbours.append((r, c))
 
         self._production = 1
         self._food = 1
@@ -600,8 +605,7 @@ class City(pygame.sprite.Sprite):
     @in_progress.setter
     def in_progress(self, new_value):
         self.progress = new_value
-        print(self.progress[1])
-        if self.progress[1] <= 0:
+        if self.progress is not None and self.progress[1] <= 0:
             if type(self.progress[0]) == Building:
                 self.built.append(self.progress[0])
                 self.production += self.progress[0].production_give
@@ -610,9 +614,12 @@ class City(pygame.sprite.Sprite):
             else:
                 global units
                 for i in self.neighbours:
-                    if game.map[i[1]][i[0]].unit is None:
-                        z = type(self.progress[0].unit)((i[1], i[0]), self.progress[0].unit.team)
+                    if game.map[i[1]][i[0]].unit is None and game.map[i[1]][i[0]].biome.name != "Sea":
+                        z = type(self.progress[0].unit)((i[0], i[1]), self.team)
+                        units_to_draw.append(z)
                         units.add(z)
+                        game.map[i[1]][i[0]].unit = z
+                        break
             self.progress = None
 
     @property
@@ -674,18 +681,21 @@ class City(pygame.sprite.Sprite):
                                                             60 * (i + 1))))
             buildings_to_draw = pygame.sprite.Group(self.can_build)
         else:
+            auf = 0
+            drawuwu = []
             for i in range(len(self.can_unit)):
-                for z in self.can_unit[i][0]:
+                for z in self.can_unit[i][1]:
                     if not z.unlocked:
                         break
                 else:
-                    self.city_screen.blit(self.can_unit[i][0].image.image, (10, 10 + (60 * (i + 1))))
-                    self.city_screen.blit(self.font.render(self.can_unit[i][0].name, True, (0, 0, 0)),
-                                          (90, 20 + (61 * (i + 1))))
-                    self.can_unit[i].image.change_pos((screen.get_width() - self.city_screen.get_width() + 10,
-                                                       screen.get_height() - self.city_screen.get_height() + 10 + (
-                                                               60 * (i + 1))))
-            drawuwu = [z[0] for z in self.can_unit]
+                    self.city_screen.blit(self.can_unit[i][0].image.image, (10, 10 + (60 * (auf + 1))))
+                    self.city_screen.blit(self.font.render(self.can_unit[i][0].unit.name, True, (0, 0, 0)),
+                                          (90, 20 + (61 * (auf + 1))))
+                    self.can_unit[i][0].image.change_pos((screen.get_width() - self.city_screen.get_width() + 10,
+                                                          screen.get_height() - self.city_screen.get_height() + 10 + (
+                                                                  60 * (auf + 1))))
+                    auf += 1
+                    drawuwu.append(self.can_unit[i][0])
             buildings_to_draw = pygame.sprite.Group(drawuwu)
 
         # Отображаем экран города справа от экрана игры
@@ -704,20 +714,18 @@ class City(pygame.sprite.Sprite):
 
 
 class UnitToBuild(pygame.sprite.Sprite):
-    def __init__(self, name, image_path, food_to_build):
+    def __init__(self, food_to_build, image_path, unit):
         super().__init__()
-        self.name = name
         self.image = Image(image_path, (150, 150), (10, 10))
         self.food_to_build = food_to_build
-        self.unit = None
+        self.unit = unit
 
     def update(self, event):
         global selected_city
         if event.type == pygame.MOUSEBUTTONUP and event.button == 1 and self.image.rect.collidepoint(
-                event.pos) and selected_city.building:
+                event.pos) and selected_city.uniting:
             if selected_city.in_progress is not None:
                 selected_city.queue.append(selected_city.in_progress)
-                selected_city.can_build.insert(0, selected_city[0])
                 selected_city.in_progress = None
             for i in selected_city.queue:
                 if i[0] == self:
@@ -746,7 +754,7 @@ class Building(pygame.sprite.Sprite):
             selected_city.can_build.remove(self)
             if selected_city.in_progress is not None:
                 selected_city.queue.append(selected_city.in_progress)
-                selected_city.can_build.insert(0, selected_city[0])
+                selected_city.can_build.insert(0, selected_city.in_progress[0])
                 selected_city.in_progress = None
             for i in selected_city.queue:
                 if i[0] == self:
@@ -1032,13 +1040,25 @@ techs_to_draw = [bronze_working, masonry, alphabet, pottery, wheel, warrior_code
                  literature, map_making, polytheism, republic, monarchy]
 techs = pygame.sprite.Group(techs_to_draw)
 
-units_for_city = [(Archer((0, 0), None), [warrior_code]), (Catapult((0, 0), None), [mathematics]),
-                  (Chariot((0, 0), None), [wheel]), (Galley((0, 0), None), [map_making]),
-                  (Horseman((0, 0), None), [horseback_riding]), (Scout((0, 0), None), []),
-                  (Settler((0, 0), None), []),
-                  (Spearman((0, 0), None), [bronze_working]),
-                  (Swordsman((0, 0), None), [iron_working]), (Trireme((0, 0), None), [alphabet]),
-                  (Warrior((0, 0), None), [])]
+unitsss = [Archer((0, 0), None), Catapult((0, 0), None),
+           Chariot((0, 0), None), Galley((0, 0), None),
+           Horseman((0, 0), None), Scout((0, 0), None),
+           Settler((0, 0), None),
+           Spearman((0, 0), None),
+           Swordsman((0, 0), None), Trireme((0, 0), None),
+           Warrior((0, 0), None)]
+
+units_for_city = [[UnitToBuild(30, unitsss[0].image_path, unitsss[0]), [warrior_code]],
+                  [UnitToBuild(30, unitsss[1].image_path, unitsss[1]), [mathematics]],
+                  [UnitToBuild(30, unitsss[2].image_path, unitsss[2]), [wheel]],
+                  [UnitToBuild(30, unitsss[3].image_path, unitsss[3]), [map_making]],
+                  [UnitToBuild(30, unitsss[4].image_path, unitsss[4]), [horseback_riding]],
+                  [UnitToBuild(30, unitsss[5].image_path, unitsss[5]), []],
+                  [UnitToBuild(30, unitsss[6].image_path, unitsss[6]), []],
+                  [UnitToBuild(30, unitsss[7].image_path, unitsss[7]), [bronze_working]],
+                  [UnitToBuild(30, unitsss[8].image_path, unitsss[8]), [iron_working]],
+                  [UnitToBuild(30, unitsss[9].image_path, unitsss[9]), [alphabet]],
+                  [UnitToBuild(30, unitsss[10].image_path, unitsss[10]), []]]
 
 science_icon = Image("src/icons/science_icon.png", (30, 30), (10, 10))
 scroll = Image("src/icons/scroll.png", window_size)
