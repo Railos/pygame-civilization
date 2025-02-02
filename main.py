@@ -8,6 +8,38 @@ import math
 selected_unit = None
 
 
+class Checkbox:
+    def __init__(self, x, y, width, height, color_active=(0, 200, 0), color_inactive=(200, 0, 0),
+                 border_color=(0, 0, 0)):
+        self.rect = pygame.Rect(x, y, width, height)
+        self.color_active = color_active
+        self.color_inactive = color_inactive
+        self.border_color = border_color
+        self.checked = False
+
+    def handle_event(self, event, team):
+        global teams
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if self.rect.collidepoint(event.pos):
+                self.checked = not self.checked
+                if self.checked:
+                    teams.append(team)
+                    print(teams)
+                else:
+                    teams.remove(team)
+                    print(teams)
+
+    def draw(self, screen):
+        pygame.draw.rect(screen, self.color_active if self.checked else self.color_inactive, self.rect)
+        pygame.draw.rect(screen, self.border_color, self.rect, 3)
+
+        if self.checked:
+            pygame.draw.line(screen, self.border_color, (self.rect.left + 5, self.rect.centery),
+                             (self.rect.centerx, self.rect.bottom - 5), 3)
+            pygame.draw.line(screen, self.border_color, (self.rect.centerx, self.rect.bottom - 5),
+                             (self.rect.right - 5, self.rect.top + 5), 3)
+
+
 class Image:
     def __init__(self, path_to_image, size, pos=(0, 0)):
         self.image = pygame.image.load(path_to_image).convert_alpha()
@@ -395,7 +427,7 @@ class Unit(pygame.sprite.Sprite):
                 return
             if other_unit.hp > 0:  # У противника должно быть здоровье
                 # Рассчитываем урон
-                damage = self.attack - other_unit.defense
+                damage = self.attack * (1 - (other_unit.defense / 100))
                 if damage > 0:
                     other_unit.hp -= damage
                     self.hp -= (damage / 2)
@@ -786,10 +818,33 @@ screen = pygame.display.set_mode(window_size)
 
 fps = 60
 clock = pygame.time.Clock()
+teams_c = (Team("Danish", [], "src/icons/danish.png"), Team("Dutch", [], "src/icons/dutch.png"),
+           Team("English", [], "src/icons/english.png"),
+           Team("Indian", [], "src/icons/indian.png"), Team("Japanese", [], "src/icons/japanese.png"),
+           Team("Russian", [], "src/icons/russian.png"),
+           Team("Spanish", [], "src/icons/spanish.png"), Team("Swedish", [], "src/icons/swedish.png"))
+
+teams = []
 
 # main menu
-start_game = Image("src/icons/start_game.png", (150, 75), (400, 200))
-loading = Image("src/icons/loading.png", (150, 75), (400, 400))
+start_game = Image("src/icons/start_game.png", (150, 75), (325, 500))
+loading = Image("src/icons/loading.png", (150, 75), (600, 500))
+danish = Image("src/icons/danish_menu.png", (150, 75), (100, 25))
+danish_c = Checkbox(25, 35, 50, 50)
+dutch = Image("src/icons/dutch_menu.png", (150, 75), (100, 100))
+dutch_c = Checkbox(25, 110, 50, 50)
+english = Image("src/icons/english_menu.png", (150, 75), (100, 175))
+english_c = Checkbox(25, 185, 50, 50)
+indian = Image("src/icons/indian_menu.png", (150, 75), (100, 250))
+indian_c = Checkbox(25, 260, 50, 50)
+japanese = Image("src/icons/japanese_menu.png", (150, 75), (550, 25))
+japanese_c = Checkbox(475, 35, 50, 50)
+russia = Image("src/icons/russia_menu.png", (150, 75), (550, 100))
+russia_c = Checkbox(475, 110, 50, 50)
+spanish = Image("src/icons/spanish_menu.png", (150, 75), (550, 175))
+spanish_c = Checkbox(475, 185, 50, 50)
+swedish = Image("src/icons/swedish_menu.png", (150, 75), (550, 250))
+swedish_c = Checkbox(475, 260, 50, 50)
 game_started = False
 while True:
     events = pygame.event.get()
@@ -800,19 +855,41 @@ while True:
         if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
             if start_game.rect.collidepoint(event.pos):
                 game_started = True
+        danish_c.handle_event(event, teams_c[0])
+        dutch_c.handle_event(event, teams_c[1])
+        english_c.handle_event(event, teams_c[2])
+        indian_c.handle_event(event, teams_c[3])
+        japanese_c.handle_event(event, teams_c[4])
+        russia_c.handle_event(event, teams_c[5])
+        spanish_c.handle_event(event, teams_c[6])
+        swedish_c.handle_event(event, teams_c[7])
 
     screen.blit(start_game.image, start_game.pos)
+    screen.blit(danish.image, danish.pos)
+    screen.blit(dutch.image, dutch.pos)
+    screen.blit(english.image, english.pos)
+    screen.blit(indian.image, indian.pos)
+    screen.blit(japanese.image, japanese.pos)
+    screen.blit(russia.image, russia.pos)
+    screen.blit(spanish.image, spanish.pos)
+    screen.blit(swedish.image, swedish.pos)
+    danish_c.draw(screen)
+    dutch_c.draw(screen)
+    english_c.draw(screen)
+    indian_c.draw(screen)
+    japanese_c.draw(screen)
+    russia_c.draw(screen)
+    spanish_c.draw(screen)
+    swedish_c.draw(screen)
     if game_started:
         screen.blit(loading.image, loading.pos)
         pygame.display.flip()
         clock.tick(fps)
         break
     pygame.display.flip()
-    # pygame.event.wait()
     clock.tick(fps)
 
 # main game
-teams = (Team("Danish", [], "src/icons/danish.png"), Team("Dutch", [], "src/icons/dutch.png"))
 Biomes = (Biome("Tundra", 2, 4, "src/biomes/tundra.png", 1, 0), Biome("Desert", 2, 4, "src/biomes/desert.png", 0, 0),
           Biome("Swamp", 3, 5, "src/biomes/swamp.png", 1, 0),
           Biome("Mountains", 3, 3, "src/biomes/mountains.png", 2, 0),
@@ -942,7 +1019,7 @@ while True:
         units.update("settle", game)
     if keys[pygame.K_ESCAPE] and (
             science_window_open or culture_window_open or city_screen_open or unit_screen_open):
-         close_window()
+        close_window()
 
     camera.update(units)
     camera.update(tiles)
