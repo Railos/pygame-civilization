@@ -5,6 +5,7 @@ import pygame
 import sys
 import math
 
+science_to_unlock = 50
 selected_unit = None
 
 
@@ -98,8 +99,8 @@ def find_shortest_path(grid, start, goal):
         return 999
     if not (0 <= goal[0] < cols and 0 <= goal[1] < rows):
         return 999
+
     if game.map[int(goal[1])][int(goal[0])].biome.name == "Sea" and map_making.unlocked == False:
-        print("Вы не умеете плавать")
         return 999
     # Направления для перемещения (вверх, вправо, вниз, влево)
     directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]
@@ -550,25 +551,27 @@ class City(pygame.sprite.Sprite):
         self.rect.center = game.map[pos[1]][pos[0]].rect.center
         self.pos = pos
         self.can_build = buildings.copy()
+        self.can_unit = units_for_city.copy()
         self.built = []
         self.building = False
+        self.uniting = False
         self.progress = None
         self.queue = []
         self.grow = 10
         self.left_to_grow = 10
 
-        neighbours = []
+        self.neighbours = []
         for r in range(pos[0] - 1, pos[0] + 2):
             for c in range(pos[1] - 1, pos[1] + 2):
                 if r == pos[0] and c == pos[1]:
                     continue
                 if 0 <= r < len(game.map) and 0 <= c < len(game.map[0]):
-                    neighbours.append((r, c))
+                    self.neighbours.append((r, c))
 
         self._production = 1
         self._food = 1
         self._gold_income = 1
-        for i in neighbours:
+        for i in self.neighbours:
             cur = game.map[i[1]][i[0]]
             if cur.resource is not None:
                 self._production += cur.resource.production
@@ -599,7 +602,17 @@ class City(pygame.sprite.Sprite):
         self.progress = new_value
         print(self.progress[1])
         if self.progress[1] <= 0:
-            self.built.append(self.progress[0])
+            if type(self.progress[0]) == Building:
+                self.built.append(self.progress[0])
+                self.production += self.progress[0].production_give
+                self.food += self.progress[0].food_give
+                self.gold_income += self.progress[0].gold_give
+            else:
+                global units
+                for i in self.neighbours:
+                    if game.map[i[1]][i[0]].unit is None:
+                        z = type(self.progress[0].unit)((i[1], i[0]), self.progress[0].unit.team)
+                        units.add(z)
             self.progress = None
 
     @property
@@ -635,8 +648,10 @@ class City(pygame.sprite.Sprite):
 
         # Отображаем информацию о городе
         self.city_screen.blit(build_button.image, (10, 10))
+        self.city_screen.blit(unit_button.image, (60, 10))
         build_button.change_pos((screen.get_width() - self.city_screen.get_width() + 10, 10))
-        if not self.building:
+        unit_button.change_pos((screen.get_width() - self.city_screen.get_width() + 60, 10))
+        if not self.building and not self.uniting:
             self.city_screen.blit(self.name_text, (10, 60))
             self.city_screen.blit(self.population_text, (10, 90))
             self.city_screen.blit(self.religion_text, (10, 120))
@@ -649,7 +664,7 @@ class City(pygame.sprite.Sprite):
             for i in range(len(self.built)):
                 self.city_screen.blit(self.built[i].image.image, (10, 270 + (60 * (i + 1))))
                 self.city_screen.blit(self.font.render(self.built[i].name, True, (0, 0, 0)), (90, 280 + (65 * (i + 1))))
-        else:
+        elif self.building:
             for i in range(len(self.can_build)):
                 self.city_screen.blit(self.can_build[i].image.image, (10, 10 + (60 * (i + 1))))
                 self.city_screen.blit(self.font.render(self.can_build[i].name, True, (0, 0, 0)),
@@ -658,6 +673,20 @@ class City(pygame.sprite.Sprite):
                                                     screen.get_height() - self.city_screen.get_height() + 10 + (
                                                             60 * (i + 1))))
             buildings_to_draw = pygame.sprite.Group(self.can_build)
+        else:
+            for i in range(len(self.can_unit)):
+                for z in self.can_unit[i][0]:
+                    if not z.unlocked:
+                        break
+                else:
+                    self.city_screen.blit(self.can_unit[i][0].image.image, (10, 10 + (60 * (i + 1))))
+                    self.city_screen.blit(self.font.render(self.can_unit[i][0].name, True, (0, 0, 0)),
+                                          (90, 20 + (61 * (i + 1))))
+                    self.can_unit[i].image.change_pos((screen.get_width() - self.city_screen.get_width() + 10,
+                                                       screen.get_height() - self.city_screen.get_height() + 10 + (
+                                                               60 * (i + 1))))
+            drawuwu = [z[0] for z in self.can_unit]
+            buildings_to_draw = pygame.sprite.Group(drawuwu)
 
         # Отображаем экран города справа от экрана игры
         screen.blit(self.city_screen, (screen.get_width() - self.city_screen.get_width(), 0))
@@ -672,6 +701,32 @@ class City(pygame.sprite.Sprite):
             else:
                 city_screen_open = True
                 selected_city = self
+
+
+class UnitToBuild(pygame.sprite.Sprite):
+    def __init__(self, name, image_path, food_to_build):
+        super().__init__()
+        self.name = name
+        self.image = Image(image_path, (150, 150), (10, 10))
+        self.food_to_build = food_to_build
+        self.unit = None
+
+    def update(self, event):
+        global selected_city
+        if event.type == pygame.MOUSEBUTTONUP and event.button == 1 and self.image.rect.collidepoint(
+                event.pos) and selected_city.building:
+            if selected_city.in_progress is not None:
+                selected_city.queue.append(selected_city.in_progress)
+                selected_city.can_build.insert(0, selected_city[0])
+                selected_city.in_progress = None
+            for i in selected_city.queue:
+                if i[0] == self:
+                    selected_city.in_progress = i
+                    selected_city.queue.remove(i)
+                    break
+            else:
+                selected_city.in_progress = (self, math.ceil(self.food_to_build / selected_city.food))
+
 
 class Building(pygame.sprite.Sprite):
     def __init__(self, name, image_path, production_to_build, production_give, food_give, gold_give, science_give):
@@ -690,7 +745,8 @@ class Building(pygame.sprite.Sprite):
                 event.pos) and selected_city.building:
             selected_city.can_build.remove(self)
             if selected_city.in_progress is not None:
-                self.queue.append(selected_city.in_progress)
+                selected_city.queue.append(selected_city.in_progress)
+                selected_city.can_build.insert(0, selected_city[0])
                 selected_city.in_progress = None
             for i in selected_city.queue:
                 if i[0] == self:
@@ -699,99 +755,95 @@ class Building(pygame.sprite.Sprite):
                     break
             else:
                 selected_city.in_progress = (self, math.ceil(self.production_to_build / selected_city.production))
-            selected_city.production += self.production_give
-            selected_city.food += self.food_give
-            selected_city.gold_income += self.gold_give
 
 
 class Archer(Unit):
-    def __init__(self, name, pos, team, walk_points):
-        super().__init__(image_path="src/units/archer.png", name=name, pos=pos, team=team, walk_points=5, attack=35,
+    def __init__(self, pos, team):
+        super().__init__(image_path="src/units/archer.png", name="Лучник", pos=pos, team=team, walk_points=5, attack=35,
                          defense=10)
 
 
 class Catapult(Unit):
-    def __init__(self, name, pos, team, walk_points):
-        super().__init__(image_path="src/units/catapult.png", name=name, pos=pos, team=team, walk_points=5, attack=1,
-                         defense=1)
+    def __init__(self, pos, team):
+        super().__init__(image_path="src/units/catapult.png", name="Катапульта", pos=pos, team=team, walk_points=3,
+                         attack=55,
+                         defense=20)
 
 
 class Chariot(Unit):
-    def __init__(self, name, pos, team, walk_points):
-        super().__init__(image_path="src/units/chariot.png", name=name, pos=pos, team=team, walk_points=5, attack=37,
+    def __init__(self, pos, team):
+        super().__init__(image_path="src/units/chariot.png", name="Колесница", pos=pos, team=team, walk_points=4,
+                         attack=37,
                          defense=25)
 
 
 class Galley(Unit):
-    def __init__(self, name, pos, team, walk_points):
-        super().__init__(image_path="src/units/galley.png", name=name, pos=pos, team=team, walk_points=5, attack=40,
+    def __init__(self, pos, team):
+        super().__init__(image_path="src/units/galley.png", name="Галера", pos=pos, team=team, walk_points=5, attack=40,
                          defense=10)
 
 
 class Horseman(Unit):
-    def __init__(self, name, pos, team, walk_points):
-        super().__init__(image_path="src/units/horseman.png", name=name, pos=pos, team=team, walk_points=5, attack=47,
+    def __init__(self, pos, team):
+        super().__init__(image_path="src/units/horseman.png", name="Всадник", pos=pos, team=team, walk_points=7,
+                         attack=47,
                          defense=20)
 
 
 class Scout(Unit):
-    def __init__(self, name, pos, team, walk_points):
-        super().__init__(image_path="src/units/scout.png", name=name, pos=pos, team=team, walk_points=5, attack=20,
+    def __init__(self, pos, team):
+        super().__init__(image_path="src/units/scout.png", name="Разведчик", pos=pos, team=team, walk_points=8,
+                         attack=20,
                          defense=10)
 
 
 class Settler(Unit):
-    def __init__(self, name, pos, team, walk_points):
-        super().__init__(image_path="src/units/settler.png", name=name, pos=pos, team=team, walk_points=5, attack=1,
+    def __init__(self, pos, team):
+        super().__init__(image_path="src/units/settler.png", name="Поселенец", pos=pos, team=team, walk_points=5,
+                         attack=1,
                          defense=1)
 
     def update(self, event, game):
         super().update(event, game)
         global selected_unit
-        if type(event) == str and event == "settle" and selected_unit == self and game.map[self.pos[1]][self.pos[0]].biome.name != "Sea":
+        if type(event) == str and event == "settle" and selected_unit == self and game.map[self.pos[1]][
+            self.pos[0]].biome.name != "Sea":
             new_city = City(self.team.city_image_path, self.pos, f'{random.randint(1, 10)}_{random.randint(1, 10)}',
                             self.team, 1, None)
             self.team.cities.append(new_city)
             print(self.team.cities)
             global units, units_to_draw, unit_screen_open
             global cities_to_draw, cities
-            units_to_draw.remove(self)
-            units = pygame.sprite.Group(units_to_draw)
-            cities_to_draw.append(new_city)
-            cities = pygame.sprite.Group(cities_to_draw)
+            units.remove(self)
+            cities.add(new_city)
             selected_unit = None
             unit_screen_open = False
 
 
 class Spearman(Unit):
-    def __init__(self, name, pos, team, walk_points):
-        super().__init__(image_path="src/units/spearman.png", name=name, pos=pos, team=team, walk_points=5,
+    def __init__(self, pos, team):
+        super().__init__(image_path="src/units/spearman.png", name="Копейщик", pos=pos, team=team, walk_points=6,
                          attack=30,
                          defense=20)
 
 
 class Swordsman(Unit):
-    def __init__(self, name, pos, team, walk_points):
-        super().__init__(image_path="src/units/swordsman.png.png", name=name, pos=pos, team=team,
+    def __init__(self, pos, team):
+        super().__init__(image_path="src/units/swordsman.png", name="Мечник", pos=pos, team=team,
                          walk_points=5, attack=35, defense=30)
 
 
 class Trireme(Unit):
-    def __init__(self, name, pos, team, walk_points):
-        super().__init__(image_path="src/units/trireme.png", name=name, pos=pos, team=team, walk_points=5, attack=30,
+    def __init__(self, pos, team):
+        super().__init__(image_path="src/units/trireme.png", name="Трирема", pos=pos, team=team, walk_points=6,
+                         attack=30,
                          defense=10)
 
 
 class Warrior(Unit):
-    def __init__(self, name, pos, team, walk_points):
-        super().__init__(image_path="src/units/warrior.png", name=name, pos=pos, team=team, walk_points=5, attack=27,
+    def __init__(self, pos, team):
+        super().__init__(image_path="src/units/warrior.png", name="Воин", pos=pos, team=team, walk_points=5, attack=27,
                          defense=17)
-
-
-class Worker(Unit):
-    def __init__(self, name, pos, team, walk_points):
-        super().__init__(image_path="src/units/worker.png", name=name, pos=pos, team=team, walk_points=5, attack=1,
-                         defense=1)
 
 
 class Tech(pygame.sprite.Sprite):
@@ -802,13 +854,19 @@ class Tech(pygame.sprite.Sprite):
         self.rect = image.rect
         self.requirements = requirements
         self.unlocked = unlocked
+        self.f = False
 
     def update(self, event):
+        global science_to_unlock
+        if science_to_unlock >= 50:
+            self.f = True
         if type(event) == pygame.event.Event and event.type == pygame.MOUSEBUTTONUP and event.button == 1:
             if self.rect.collidepoint(event.pos) and not self.unlocked:
                 for i in self.requirements:
                     if not i.unlocked:
                         return
+                self.f = False
+                science_to_unlock = 0
                 print("UNLOCKED UWU!!!!!!!!!!!")
                 self.unlocked = True
 
@@ -816,14 +874,15 @@ class Tech(pygame.sprite.Sprite):
 pygame.init()
 window_size = (800, 600)
 screen = pygame.display.set_mode(window_size)
+pygame.display.set_caption("Kirilization 3")
 
 fps = 60
 clock = pygame.time.Clock()
-teams_c = (Team("Danish", [], "src/icons/danish.png"), Team("Dutch", [], "src/icons/dutch.png"),
-           Team("English", [], "src/icons/english.png"),
-           Team("Indian", [], "src/icons/indian.png"), Team("Japanese", [], "src/icons/japanese.png"),
-           Team("Russian", [], "src/icons/russian.png"),
-           Team("Spanish", [], "src/icons/spanish.png"), Team("Swedish", [], "src/icons/swedish.png"))
+teams_c = (Team("Дания", [], "src/icons/danish.png"), Team("Нидерланды", [], "src/icons/dutch.png"),
+           Team("Англия", [], "src/icons/english.png"),
+           Team("Индия", [], "src/icons/indian.png"), Team("Япония", [], "src/icons/japanese.png"),
+           Team("Россия", [], "src/icons/russian.png"),
+           Team("Испания", [], "src/icons/spanish.png"), Team("Швеция", [], "src/icons/swedish.png"))
 
 teams = []
 
@@ -846,17 +905,17 @@ spanish = Image("src/icons/spanish_menu.png", (150, 75), (550, 175))
 spanish_c = Checkbox(475, 185, 50, 50)
 swedish = Image("src/icons/swedish_menu.png", (150, 75), (550, 250))
 swedish_c = Checkbox(475, 260, 50, 50)
-bacground = Image("src/icons/menu_background.png", (800, 600), (0, 0))
+background = Image("src/icons/menu_background.png", (800, 600), (0, 0))
 game_started = False
 while True:
     events = pygame.event.get()
     screen.fill((0, 0, 0))
-    screen.blit(bacground.image, bacground.pos)
+    screen.blit(background.image, background.pos)
     for event in events:
         if event.type == pygame.QUIT:
             sys.exit(0)
         if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
-            if start_game.rect.collidepoint(event.pos):
+            if len(teams) > 0 and start_game.rect.collidepoint(event.pos):
                 game_started = True
         danish_c.handle_event(event, teams_c[0])
         dutch_c.handle_event(event, teams_c[1])
@@ -927,10 +986,11 @@ buildings = [Building("Акведук", "src/building/aqueduct.png", 70, 1, 3, 0
              Building("Дворец", "src/building/Palace.png", 64, 1, 1, 3, 2),
              Building("Храм", "src/building/temple.png", 70, 0, 0, 2, 2),
              Building("Стены", "src/building/wall.png", 58, 2, 0, 0, 0)]
+
 resources_to_draw = []
 game.start_game()
 game.generate_resources()
-settler1 = Settler("settler1", (4, 0), teams[0], 5)
+settler1 = Settler((2, 0), teams[0])
 units_to_draw = [settler1]
 cities_to_draw = []
 units = pygame.sprite.Group(units_to_draw)
@@ -941,6 +1001,7 @@ resourcesss.add(resources_to_draw)
 buildings_to_draw = pygame.sprite.Group()
 
 build_button = Image("src/icons/build.png", (50, 50), (10, 10))
+unit_button = Image("src/icons/unit_button.png", (50, 50), (10, 10))
 
 camera = Camera()
 
@@ -971,9 +1032,18 @@ techs_to_draw = [bronze_working, masonry, alphabet, pottery, wheel, warrior_code
                  literature, map_making, polytheism, republic, monarchy]
 techs = pygame.sprite.Group(techs_to_draw)
 
+units_for_city = [(Archer((0, 0), None), [warrior_code]), (Catapult((0, 0), None), [mathematics]),
+                  (Chariot((0, 0), None), [wheel]), (Galley((0, 0), None), [map_making]),
+                  (Horseman((0, 0), None), [horseback_riding]), (Scout((0, 0), None), []),
+                  (Settler((0, 0), None), []),
+                  (Spearman((0, 0), None), [bronze_working]),
+                  (Swordsman((0, 0), None), [iron_working]), (Trireme((0, 0), None), [alphabet]),
+                  (Warrior((0, 0), None), [])]
+
 science_icon = Image("src/icons/science_icon.png", (30, 30), (10, 10))
 scroll = Image("src/icons/scroll.png", window_size)
-next_turn_icon = Image("src/icons/next_turn.png", (200, 200), (630, 450))
+next_turn_icon = Image("src/icons/next_turn.png", (200, 200), (610, 420))
+open_tech_text = Image("src/icons/You can open tech.png", (200, 100), (400, 5))
 
 science_window_open = False
 culture_window_open = False
@@ -984,9 +1054,10 @@ selected_city = None
 MOVING = False
 pygame.font.init()
 my_font = pygame.font.SysFont('Comic Sans MS', 30)
+
 # main loop
 while True:
-    text_surface = my_font.render(f"{game.player_team.name}", False, (0, 0, 0))
+    text_surface = my_font.render(f"{game.player_team.name}", False, (255, 255, 255))
     events = pygame.event.get()
     screen.fill((0, 0, 0))
     for event in events:
@@ -1009,6 +1080,13 @@ while True:
             if selected_city is not None and build_button.rect.collidepoint(
                     event.pos) and selected_city.team == game.player_team:
                 selected_city.building = not selected_city.building
+                if selected_city.building:
+                    selected_city.uniting = False
+            if selected_city is not None and unit_button.rect.collidepoint(
+                    event.pos) and selected_city.team == game.player_team:
+                selected_city.uniting = not selected_city.uniting
+                if selected_city.uniting:
+                    selected_city.building = False
 
     keys = pygame.key.get_pressed()
     if keys[pygame.K_w]:
@@ -1033,6 +1111,9 @@ while True:
     update_window()
     if science_window_open:
         techs.draw(screen)
+        if science_to_unlock >= 50:
+            text_surface = my_font.render(f"Вы можете открыть новую технологию", False, (255, 255, 255))
+            screen.blit(text_surface, (200, 30))
     else:
         tiles.draw(screen)
         resourcesss.draw(screen)
@@ -1047,7 +1128,7 @@ while True:
 
     if selected_unit is None and selected_city is None and not science_window_open:
         screen.blit(next_turn_icon.image, next_turn_icon.pos)
-        screen.blit(text_surface, (next_turn_icon.pos[0] + 40,next_turn_icon.pos[1] - 20))
+        screen.blit(text_surface, (next_turn_icon.pos[0] + 40, next_turn_icon.pos[1]))
     MOVING = False
     camera.reset_offset()
     pygame.display.flip()
