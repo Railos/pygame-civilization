@@ -154,7 +154,6 @@ class Game:
                 else:
                     i.hp += (100 - i.hp)
             i.cur_walk_points = i.walk_points
-        print(teams)
         for i in range(len(teams)):
             if self.player_team.name == teams[i].name:
                 z = (i + 1) % len(teams)
@@ -166,6 +165,17 @@ class Game:
                 i.in_progress = (i.in_progress[0], i.in_progress[1] - 1)
             i.left_to_grow -= 1
             science_to_unlock += i.science
+        for i in units_to_draw:
+            if i.team.name == game.player_team.name:
+                camera.center_on(self.map[i.pos[1]][i.pos[0]])
+                FORCE_CAMERA_POS = True
+                break
+        else:
+            for i in cities_to_draw:
+                if i.team.name == game.player_team.name:
+                    camera.center_on(self.map[i.pos[0]][i.pos[1]])
+                    FORCE_CAMERA_POS = True
+                    break
 
     def generate_map(self):
 
@@ -544,6 +554,10 @@ class Camera:
         self.offset_x = 0
         self.offset_y = 0
 
+    def center_on(self, target):
+        self.offset_x = -(target.rect.centerx - window_size[0] // 2)
+        self.offset_y = -(target.rect.centery - window_size[1] // 2)
+
 
 class City(pygame.sprite.Sprite):
     def __init__(self, image_path, pos, name, team, population, religion):
@@ -607,6 +621,7 @@ class City(pygame.sprite.Sprite):
         self.population_text = self.font.render(f"Население: {self.population}", True, (0, 0, 0))
         self.religion_text = self.font.render(f"Религия: {self.religion if self.religion else 'Нет'}", True, (0, 0, 0))
         self.queue_text = self.font.render(f"Очередь:", True, (0, 0, 0))
+        self.queue_progress_text = self.font.render(f"", True, (0, 0, 0))
         self.name_text = self.font.render(f"Город: {self.name}", True, (0, 0, 0))
 
     @property
@@ -694,10 +709,16 @@ class City(pygame.sprite.Sprite):
             self.city_screen.blit(self.gold_income_text, (10, 210))
             self.city_screen.blit(self.turn_to_grow_text, (10, 240))
             self.city_screen.blit(self.queue_text, (10, 270))
-            self.city_screen.blit(self.buildings_text, (10, 300))
+            self.city_screen.blit(self.buildings_text, (10, 310))
             for i in range(len(self.built)):
-                self.city_screen.blit(self.built[i].image.image, (10, 270 + (60 * (i + 1))))
-                self.city_screen.blit(self.font.render(self.built[i].name, True, (0, 0, 0)), (90, 280 + (65 * (i + 1))))
+                self.city_screen.blit(self.built[i].image.image, (10, 280 + (60 * (i + 1))))
+                self.city_screen.blit(self.font.render(self.built[i].name, True, (0, 0, 0)), (90, 290 + (65 * (i + 1))))
+            if self.progress is not None and type(self.progress[0]) == UnitToBuild:
+                self.city_screen.blit(self.progress[0].image.image, (90, 260))
+                self.city_screen.blit(self.font.render(f"{self.progress[1]}", True, (0, 0, 0)), (150, 260))
+            if self.progress is not None and type(self.progress[0]) == Building:
+                self.city_screen.blit(self.progress[0].image.image, (90, 260))
+                self.city_screen.blit(self.font.render(f"{self.progress[1]}", True, (0, 0, 0)), (150, 260))
         elif self.building:
             for i in range(len(self.can_build)):
                 self.city_screen.blit(self.can_build[i].image.image, (10, 10 + (60 * (i + 1))))
@@ -779,6 +800,8 @@ class Building(pygame.sprite.Sprite):
         if event.type == pygame.MOUSEBUTTONUP and event.button == 1 and self.image.rect.collidepoint(
                 event.pos) and selected_city.building:
             selected_city.can_build.remove(self)
+            if selected_city.in_progress is not None and type(selected_city.in_progress[0]) == UnitToBuild:
+                selected_city.in_progress = None
             if selected_city.in_progress is not None:
                 selected_city.queue.append(selected_city.in_progress)
                 selected_city.can_build.insert(0, selected_city.in_progress[0])
@@ -1095,6 +1118,7 @@ unit_screen_open = False
 city_screen_open = False
 selected_city = None
 MOVING = False
+FORCE_CAMERA_POS = False
 pygame.font.init()
 my_font = pygame.font.SysFont('Comic Sans MS', 30)
 game.player_team = teams[0]
@@ -1108,6 +1132,9 @@ for z in teams:
     units_to_draw.append(s)
     units.add(s)
     game.map[i][j].unit = units_to_draw[len(units_to_draw) - 1]
+    if s.team.name == game.player_team.name:
+        camera.center_on(game.map[i][j])
+        FORCE_CAMERA_POS = True
 
 
 # main loop
@@ -1144,14 +1171,15 @@ while True:
                     selected_city.building = False
 
     keys = pygame.key.get_pressed()
-    if keys[pygame.K_w]:
-        camera.move(0, 7)
-    if keys[pygame.K_s]:
-        camera.move(0, -7)
-    if keys[pygame.K_a]:
-        camera.move(7, 0)
-    if keys[pygame.K_d]:
-        camera.move(-7, 0)
+    if not FORCE_CAMERA_POS:
+        if keys[pygame.K_w]:
+            camera.move(0, 7)
+        if keys[pygame.K_s]:
+            camera.move(0, -7)
+        if keys[pygame.K_a]:
+            camera.move(7, 0)
+        if keys[pygame.K_d]:
+            camera.move(-7, 0)
 
     if keys[pygame.K_SPACE]:
         units.update("settle", game)
@@ -1185,6 +1213,7 @@ while True:
         screen.blit(next_turn_icon.image, next_turn_icon.pos)
         screen.blit(text_surface, (next_turn_icon.pos[0] + 40, next_turn_icon.pos[1]))
     MOVING = False
+    FORCE_CAMERA_POS = False
     camera.reset_offset()
     pygame.display.flip()
     clock.tick(fps)
